@@ -10,297 +10,271 @@
         tailwind.config = {
             theme: {
                 extend: {
-                    fontFamily: { sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'] },
-                    colors: {
-                        gray: { 50: '#fafafa', 100: '#f4f4f5', 200: '#e4e4e7', 300: '#d4d4d8', 400: '#a1a1aa', 500: '#71717a', 600: '#52525b', 700: '#3f3f46', 800: '#27272a', 900: '#18181b' },
-                    }
+                    fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+                    colors: { gray: { 50: '#fafafa', 100: '#f4f4f5', 200: '#e4e4e7', 300: '#d4d4d8', 400: '#a1a1aa', 500: '#71717a', 600: '#52525b', 700: '#3f3f46', 800: '#27272a', 900: '#18181b' } }
                 }
             }
         }
     </script>
     <style>
         body { font-family: 'Inter', system-ui, sans-serif; -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent; }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        
-        .fade-in { animation: fadeIn 0.2s ease-out forwards; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: translateY(0); } }
-
-        .slide-panel { transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
-        .sidebar-mobile { transition: transform 0.3s ease-in-out; }
-        
-        /* 拖拽样式 */
-        .dragging { opacity: 0.4; }
-        .drag-over { background-color: #f3f4f6; border-radius: 6px; }
-        
-        /* 手机端拖拽镜像样式 */
-        .touch-mirror {
-            position: fixed; z-index: 9999; pointer-events: none; opacity: 0.9;
-            transform: scale(1.02); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-            width: var(--mirror-width); background: white; border-radius: 0.5rem;
-        }
-
-        /* 日历样式 */
+        .no-scrollbar::-webkit-scrollbar { display: none; } .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .fade-in { animation: fadeIn 0.2s ease-out forwards; } @keyframes fadeIn { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: translateY(0); } }
+        .slide-panel { transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); } .sidebar-mobile { transition: transform 0.3s ease-in-out; }
+        .dragging { opacity: 0.4; } .drag-over { background-color: #f3f4f6; border-radius: 6px; }
+        .touch-mirror { position: fixed; z-index: 9999; pointer-events: none; opacity: 0.9; transform: scale(1.02); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); width: var(--mirror-width); background: white; border-radius: 0.5rem; }
         .cal-grid-cols-7 { grid-template-columns: repeat(7, minmax(0, 1fr)); }
-        
-        .cal-bg-pattern {
-            background-image: linear-gradient(to right, rgba(0,0,0,0.03) 1px, transparent 1px),
-                              linear-gradient(to bottom, rgba(0,0,0,0.03) 1px, transparent 1px);
-            background-size: 20px 20px;
-        }
-
-        .cal-task-bar {
-            position: relative; z-index: 10; transition: transform 0.1s ease-out, box-shadow 0.1s;
-        }
-        
+        .cal-bg-pattern { background-image: linear-gradient(to right, rgba(0,0,0,0.03) 1px, transparent 1px), linear-gradient(to bottom, rgba(0,0,0,0.03) 1px, transparent 1px); background-size: 20px 20px; }
+        .cal-task-bar { position: relative; z-index: 10; transition: transform 0.1s ease-out, box-shadow 0.1s; color: rgba(0,0,0,0.7); }
         .task-segment-start { border-top-right-radius: 0; border-bottom-right-radius: 0; border-right: none; margin-right: -1px; z-index: 11; }
         .task-segment-mid { border-radius: 0; border-left: none; border-right: none; margin-left: -1px; margin-right: -1px; z-index: 10; }
         .task-segment-end { border-top-left-radius: 0; border-bottom-left-radius: 0; border-left: none; margin-left: -1px; z-index: 11; }
-
         .drag-preview-cell { background-color: rgba(59, 130, 246, 0.15) !important; }
-
-        .resize-handle {
-            position: absolute; top: 0; bottom: 0; width: 12px; cursor: col-resize; z-index: 20; 
-            opacity: 0; transition: opacity 0.2s;
-        }
-        .cal-task-bar:hover .resize-handle { opacity: 1; }
-        .resize-handle:hover { background: rgba(0,0,0,0.1); }
-        .resize-handle-l { left: 0; border-top-left-radius: 4px; border-bottom-left-radius: 4px; }
-        .resize-handle-r { right: 0; border-top-right-radius: 4px; border-bottom-right-radius: 4px; }
-
+        .resize-handle { position: absolute; top: 0; bottom: 0; width: 12px; cursor: col-resize; z-index: 20; opacity: 0; transition: opacity 0.2s; }
+        .cal-task-bar:hover .resize-handle { opacity: 1; } .resize-handle:hover { background: rgba(0,0,0,0.1); }
+        .resize-handle-l { left: 0; border-top-left-radius: 4px; border-bottom-left-radius: 4px; } .resize-handle-r { right: 0; border-top-right-radius: 4px; border-bottom-right-radius: 4px; }
         .select-none-all * { user-select: none !important; }
-
-        /* 图表动画 */
-        .pie-entrance { animation: scaleIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; transform: scale(0.9); opacity: 0; }
-        @keyframes scaleIn { to { transform: scale(1); opacity: 1; } }
-
+        .pie-entrance { animation: scaleIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; transform: scale(0.9); opacity: 0; } @keyframes scaleIn { to { transform: scale(1); opacity: 1; } }
         [contenteditable]:focus { outline: none; background-color: rgba(0,0,0,0.05); border-radius: 4px; padding: 0 4px; }
-        
-        /* 适配 iPhone 底部安全区 */
         .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+        #toast { visibility: hidden; opacity: 0; transition: opacity 0.3s, transform 0.3s; transform: translateY(20px); }
+        #toast.show { visibility: visible; opacity: 1; transform: translateY(0); }
+        input[type="color"] { -webkit-appearance: none; border: none; width: 20px; height: 20px; padding: 0; overflow: hidden; border-radius: 4px; cursor: pointer; }
+        input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+        input[type="color"]::-webkit-color-swatch { border: none; border-radius: 4px; border: 1px solid rgba(0,0,0,0.1); }
+        
+        /* Timeline View Specifics */
+        .timeline-grid { display: grid; grid-template-columns: 200px 1fr; height: 100%; overflow: hidden; }
+        .timeline-sidebar { border-right: 1px solid #f4f4f5; background: #fafafa; overflow-y: hidden; user-select: none; }
+        .timeline-content { overflow-x: auto; overflow-y: auto; position: relative; }
+        .timeline-header-row { display: flex; border-bottom: 1px solid #e4e4e7; position: sticky; top: 0; z-index: 20; background: #fff; height: 40px; }
+        .timeline-day-col { flex-shrink: 0; width: 40px; text-align: center; border-right: 1px solid #f4f4f5; font-size: 10px; display: flex; align-items: center; justify-content: center; color: #71717a; }
+        .timeline-row { position: relative; border-bottom: 1px solid #f4f4f5; display: flex; align-items: center; transition: background-color 0.1s; }
+        .timeline-row:hover { background-color: #fcfcfc; }
+        .timeline-bar { position: absolute; border-radius: 4px; font-size: 10px; white-space: nowrap; overflow: hidden; display: flex; align-items: center; padding: 0 4px; transition: all 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        .timeline-bar.compact { height: 4px; border-radius: 2px; padding: 0; }
+        .timeline-bar.compact:hover { height: 16px; z-index: 50; }
     </style>
 </head>
 <body class="bg-white text-gray-900 h-screen flex overflow-hidden selection:bg-gray-900 selection:text-white">
 
-    <!-- 移动端侧边栏遮罩 -->
+    <!-- Toast -->
+    <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-4 py-2 rounded-md shadow-lg text-xs font-medium z-[100] flex items-center gap-2">
+        <i data-lucide="check-circle" class="w-4 h-4 text-emerald-400"></i><span id="toast-msg">操作成功</span>
+    </div>
+
     <div id="mobile-sidebar-backdrop" onclick="toggleSidebar()" class="fixed inset-0 bg-gray-900/20 backdrop-blur-[1px] z-30 hidden transition-opacity opacity-0 md:hidden"></div>
 
-    <!-- 侧边栏 -->
     <aside id="main-sidebar" class="w-64 border-r border-gray-100 flex flex-col bg-gray-50/95 md:bg-gray-50/50 fixed inset-y-0 left-0 transform -translate-x-full md:translate-x-0 md:relative z-40 sidebar-mobile cursor-default select-none shadow-xl md:shadow-none">
-        <div class="p-4 flex items-center justify-between mb-2">
+        <div class="p-4 flex items-center justify-between mb-2 shrink-0">
             <div class="flex items-center space-x-2">
                 <div class="w-6 h-6 bg-gray-900 rounded-md flex items-center justify-center text-white shadow-md">
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/></svg>
                 </div>
                 <span class="font-semibold tracking-tight text-sm">Nexus</span>
             </div>
-            <!-- 移动端关闭按钮 -->
             <button onclick="toggleSidebar()" class="md:hidden text-gray-400 p-1"><i data-lucide="x" class="w-5 h-5"></i></button>
         </div>
 
-        <div class="px-2 space-y-0.5 flex-1 flex flex-col">
+        <div class="px-2 space-y-0.5 flex-1 flex flex-col overflow-y-auto no-scrollbar">
             <button onclick="openModal(); toggleSidebar()" class="w-full flex items-center space-x-2 px-2 py-2.5 md:py-1.5 bg-white shadow-sm border border-gray-200 rounded-md text-sm font-medium text-gray-800 mb-6 hover:border-gray-300 transition-colors group">
-                <div class="bg-gray-100 rounded p-0.5 group-hover:bg-gray-200 transition-colors"><i data-lucide="plus" class="w-3.5 h-3.5 text-gray-500"></i></div>
-                <span>新建任务</span>
+                <div class="bg-gray-100 rounded p-0.5 group-hover:bg-gray-200 transition-colors"><i data-lucide="plus" class="w-3.5 h-3.5 text-gray-500"></i></div><span>新建任务</span>
             </button>
-
-            <div class="text-xs font-medium text-gray-400 px-2 py-2 uppercase tracking-wider">工作区</div>
             
+            <div class="text-xs font-medium text-gray-400 px-2 py-2 uppercase tracking-wider">视图</div>
             <div id="nav-inbox" onclick="navigateTo('inbox')" class="cursor-pointer flex items-center space-x-2 px-2 py-3 md:py-1.5 bg-gray-200/60 text-gray-900 rounded-md text-sm font-medium transition-colors">
-                <i data-lucide="inbox" class="w-4 h-4"></i>
-                <span>待办中心</span>
+                <i data-lucide="layers" class="w-4 h-4"></i><span>列表视图</span>
                 <span id="inbox-count" class="ml-auto text-xs text-gray-500 bg-gray-200/50 px-1.5 py-0.5 rounded-full">0</span>
             </div>
             <div id="nav-projects" onclick="navigateTo('projects')" class="cursor-pointer flex items-center space-x-2 px-2 py-3 md:py-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-900 rounded-md text-sm font-medium transition-colors">
-                <i data-lucide="kanban-square" class="w-4 h-4"></i>
-                <span>项目看板</span>
+                <i data-lucide="kanban-square" class="w-4 h-4"></i><span>看板视图</span>
             </div>
              <div id="nav-calendar" onclick="navigateTo('calendar')" class="cursor-pointer flex items-center space-x-2 px-2 py-3 md:py-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-900 rounded-md text-sm font-medium transition-colors">
-                <i data-lucide="calendar" class="w-4 h-4"></i>
-                <span>日历视图</span>
+                <i data-lucide="calendar" class="w-4 h-4"></i><span>日历视图</span>
             </div>
             <div id="nav-stats" onclick="navigateTo('stats')" class="cursor-pointer flex items-center space-x-2 px-2 py-3 md:py-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-900 rounded-md text-sm font-medium transition-colors">
-                <i data-lucide="pie-chart" class="w-4 h-4"></i>
-                <span>统计分析</span>
-            </div>
-            
-            <div class="flex-1"></div>
-
-            <div class="pb-2">
-                <button onclick="triggerDirectExport()" class="w-full flex items-center space-x-2 px-2 py-3 md:py-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-900 rounded-md text-sm font-medium transition-colors text-left">
-                    <i data-lucide="file-down" class="w-4 h-4"></i>
-                    <span>导出报告</span>
-                </button>
+                <i data-lucide="pie-chart" class="w-4 h-4"></i><span>统计分析</span>
             </div>
         </div>
 
-        <div class="p-3 border-t border-gray-200">
-            <div class="flex items-center space-x-2 p-1.5 rounded-md hover:bg-gray-100 cursor-pointer transition-colors group" title="点击编辑名称">
-                <div id="user-avatar" class="w-6 h-6 rounded-full bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center text-[10px] text-white font-bold ring-2 ring-white">JD</div>
-                <span id="user-name" contenteditable="true" onblur="saveUserName(this.innerText)" onkeydown="if(event.key === 'Enter'){event.preventDefault(); this.blur();}" class="text-xs font-medium text-gray-700 truncate min-w-[50px] outline-none border-b border-transparent focus:border-gray-300">John Doe</span>
-                <i data-lucide="pencil" class="w-3 h-3 text-gray-300 opacity-0 group-hover:opacity-100 ml-auto"></i>
+        <!-- Footer Section: Tools & Profile -->
+        <div class="shrink-0">
+            <div class="px-2 py-2 space-y-0.5">
+                <button onclick="openImportModal()" class="w-full flex items-center space-x-2 px-2 py-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-900 rounded-md text-xs font-medium transition-colors text-left">
+                    <i data-lucide="file-json" class="w-3.5 h-3.5"></i><span>导入数据</span>
+                </button>
+                <button onclick="triggerDirectExport()" class="w-full flex items-center space-x-2 px-2 py-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-900 rounded-md text-xs font-medium transition-colors text-left">
+                    <i data-lucide="file-down" class="w-3.5 h-3.5"></i><span>导出报告</span>
+                </button>
+            </div>
+            <div class="h-px bg-gray-200 my-1 mx-3"></div>
+            <div class="px-3 pb-3 pt-1">
+                <div class="flex items-center space-x-2 p-1.5 rounded-md hover:bg-gray-100 cursor-pointer transition-colors group">
+                    <div id="user-avatar" class="w-6 h-6 rounded-full bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center text-[10px] text-white font-bold ring-2 ring-white">JD</div>
+                    <span id="user-name" contenteditable="true" onblur="saveUserName(this.innerText)" onkeydown="if(event.key === 'Enter'){event.preventDefault(); this.blur();}" class="text-xs font-medium text-gray-700 truncate min-w-[50px] outline-none border-b border-transparent focus:border-gray-300">John Doe</span>
+                    <i data-lucide="pencil" class="w-3 h-3 text-gray-300 opacity-0 group-hover:opacity-100 ml-auto"></i>
+                </div>
             </div>
         </div>
     </aside>
 
-    <!-- 主内容区 -->
     <main class="flex-1 flex flex-col min-w-0 bg-white relative">
-        <!-- 头部导航 -->
         <header class="h-14 border-b border-gray-100 flex items-center justify-between px-4 sm:px-6 bg-white shrink-0 z-10">
             <div class="flex items-center space-x-3">
                 <button onclick="toggleSidebar()" class="md:hidden text-gray-500 p-1 hover:bg-gray-50 rounded-md active:bg-gray-100"><i data-lucide="menu" class="w-6 h-6"></i></button>
                 <div id="header-breadcrumbs" class="flex items-center space-x-2 text-sm text-gray-500 select-none">
-                    <span class="hover:text-gray-900 cursor-pointer transition-colors hidden sm:inline">工作区</span>
-                    <span class="text-gray-300 hidden sm:inline">/</span>
-                    <span id="page-title" class="font-medium text-gray-900">待办中心</span>
+                    <span id="page-title" class="font-normal text-gray-600">列表视图</span>
                 </div>
             </div>
-
             <div class="flex items-center space-x-3">
-                <button class="hidden sm:flex text-gray-400 hover:text-gray-600 transition-colors"><i data-lucide="search" class="w-4 h-4"></i></button>
+                <button onclick="copyAIPrompt()" class="bg-white border border-gray-200 text-gray-600 hover:text-gray-900 hover:bg-gray-50 text-xs font-medium px-2.5 py-1.5 rounded-md transition-colors shadow-sm flex items-center active:scale-95 group relative" title="复制 Prompt">
+                    <i data-lucide="sparkles" class="w-3.5 h-3.5 mr-1.5 text-amber-500 group-hover:text-amber-600"></i>
+                    <span class="hidden sm:inline">AI Prompt</span>
+                </button>
                 <button onclick="openModal()" class="bg-gray-900 hover:bg-gray-800 text-white text-xs font-medium px-3 py-1.5 rounded-md transition-colors shadow-sm flex items-center active:scale-95">
                     <i data-lucide="plus" class="w-3.5 h-3.5 mr-1.5"></i>
-                    <span class="hidden sm:inline">新建任务</span>
-                    <span class="sm:hidden">新建</span>
+                    <span class="hidden sm:inline">新建</span>
                 </button>
             </div>
         </header>
 
-        <!-- 视图: 待办中心 (Inbox) -->
         <div id="view-inbox" class="flex-1 overflow-auto fade-in scroll-smooth p-4 sm:p-6 max-w-4xl mx-auto w-full">
             <div class="mb-8">
-                <h1 class="text-2xl font-semibold text-gray-900 tracking-tight mb-1">待办中心</h1>
-                <p class="text-sm text-gray-500">收集并组织您的所有任务。</p>
+                <h1 class="text-2xl font-semibold text-gray-900 tracking-tight mb-1">任务列表</h1>
+                <p class="text-sm text-gray-500">查看并管理您的所有任务。</p>
             </div>
-
             <div class="space-y-8">
-                <!-- 进行中任务 -->
                 <section>
                     <div class="flex items-center justify-between mb-3 pb-2 border-b border-gray-100">
                         <div class="flex items-center space-x-2">
                             <i data-lucide="circle-dot" class="w-4 h-4 text-gray-500"></i>
-                            <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide">进行中</h3>
+                            <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide">进行中 / 待办</h3>
+                        </div>
+                        
+                        <div class="flex items-center gap-2">
+                             <!-- Filter Dropdown Trigger -->
+                             <div class="relative">
+                                <button onclick="toggleFilterDropdown('inbox-filter-dropdown')" id="inbox-filter-btn" class="flex items-center space-x-1.5 bg-gray-50 hover:bg-gray-100 text-gray-500 hover:text-gray-800 px-2 py-1 rounded text-xs font-medium transition-colors border border-transparent hover:border-gray-200">
+                                    <i data-lucide="filter" class="w-3 h-3"></i>
+                                    <span class="current-filter-label">项目筛选</span>
+                                    <i data-lucide="chevron-down" class="w-3 h-3 ml-0.5"></i>
+                                </button>
+                                <!-- Filter Dropdown Content -->
+                                <div id="inbox-filter-dropdown" class="filter-dropdown-menu hidden absolute right-0 top-full mt-2 w-56 bg-white rounded-lg shadow-xl border border-gray-100 z-50 overflow-hidden py-1 transform origin-top-right transition-all animate-in fade-in zoom-in-95 duration-100">
+                                    <div class="px-3 py-2 bg-gray-50 border-b border-gray-100 text-[10px] font-semibold text-gray-400 uppercase tracking-wide flex justify-between">
+                                        <span>选择项目</span>
+                                        <button onclick="setProjectFilter(null); closeFilterDropdowns()" class="text-blue-600 hover:text-blue-800">重置</button>
+                                    </div>
+                                    <div class="filter-list-content max-h-60 overflow-y-auto p-1 space-y-0.5">
+                                        <!-- Populated by JS -->
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Switch to Calendar View -->
+                            <button onclick="navigateTo('calendar')" class="p-1 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors" title="切换到日历">
+                                <i data-lucide="calendar" class="w-4 h-4"></i>
+                            </button>
                         </div>
                     </div>
-                    <div id="inbox-list" class="space-y-1 min-h-[50px]">
-                        <!-- JS 注入 -->
-                    </div>
+                    <div id="inbox-list" class="space-y-1 min-h-[50px]"></div>
                 </section>
-
-                <!-- 已完成任务 -->
                 <section class="opacity-80">
-                    <div class="flex items-center space-x-2 mb-3 pb-2 border-b border-gray-100">
-                        <i data-lucide="check-circle-2" class="w-4 h-4 text-gray-400"></i>
-                        <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wide">已完成</h3>
-                    </div>
-                    <div id="inbox-completed-list" class="space-y-1">
-                        <!-- JS 注入 -->
-                    </div>
+                    <div class="flex items-center space-x-2 mb-3 pb-2 border-b border-gray-100"><i data-lucide="check-circle-2" class="w-4 h-4 text-gray-400"></i><h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wide">已完成</h3></div>
+                    <div id="inbox-completed-list" class="space-y-1"></div>
                 </section>
             </div>
         </div>
 
-        <!-- 视图: 项目看板 (Kanban) -->
         <div id="view-projects" class="hidden flex-1 flex flex-col overflow-hidden fade-in bg-gray-50/50">
-            <div class="px-4 sm:px-6 py-4 flex-none">
-                <h1 class="text-xl font-semibold text-gray-900 tracking-tight">项目看板</h1>
-            </div>
+            <div class="px-4 sm:px-6 py-4 flex-none"><h1 class="text-xl font-semibold text-gray-900 tracking-tight">看板视图</h1></div>
             <div class="flex-1 overflow-x-auto overflow-y-hidden px-4 sm:px-6 pb-6 touch-pan-x">
                 <div class="h-full flex space-x-4 sm:space-x-6 min-w-max">
-                    <!-- 列: 待办 -->
                     <div class="w-72 sm:w-80 flex flex-col h-full kanban-col" data-status="todo">
-                        <div class="flex items-center justify-between mb-3 px-1">
-                            <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-2">
-                                <span class="w-2 h-2 rounded-full bg-gray-300"></span> 待办
-                            </span>
-                            <span id="count-todo" class="text-xs text-gray-400">0</span>
-                        </div>
-                        <div id="board-todo" class="flex-1 bg-gray-100/50 rounded-xl p-2 space-y-2 overflow-y-auto border border-gray-200/60" 
-                             ondragover="allowDrop(event)" ondrop="drop(event, 'todo')">
-                        </div>
+                        <div class="flex items-center justify-between mb-3 px-1"><span class="text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-gray-300"></span> 待办</span><span id="count-todo" class="text-xs text-gray-400">0</span></div>
+                        <div id="board-todo" class="flex-1 bg-gray-100/50 rounded-xl p-2 space-y-2 overflow-y-auto border border-gray-200/60" ondragover="allowDrop(event)" ondrop="drop(event, 'todo')"></div>
                     </div>
-
-                    <!-- 列: 进行中 -->
                     <div class="w-72 sm:w-80 flex flex-col h-full kanban-col" data-status="inprogress">
-                         <div class="flex items-center justify-between mb-3 px-1">
-                            <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-2">
-                                <span class="w-2 h-2 rounded-full bg-blue-400 animate-pulse"></span> 进行中
-                            </span>
-                             <span id="count-inprogress" class="text-xs text-gray-400">0</span>
-                        </div>
-                        <div id="board-inprogress" class="flex-1 bg-gray-100/50 rounded-xl p-2 space-y-2 overflow-y-auto border border-gray-200/60"
-                             ondragover="allowDrop(event)" ondrop="drop(event, 'inprogress')">
-                        </div>
+                         <div class="flex items-center justify-between mb-3 px-1"><span class="text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-blue-400 animate-pulse"></span> 进行中</span><span id="count-inprogress" class="text-xs text-gray-400">0</span></div>
+                        <div id="board-inprogress" class="flex-1 bg-gray-100/50 rounded-xl p-2 space-y-2 overflow-y-auto border border-gray-200/60" ondragover="allowDrop(event)" ondrop="drop(event, 'inprogress')"></div>
                     </div>
-
-                    <!-- 列: 已完成 -->
                     <div class="w-72 sm:w-80 flex flex-col h-full kanban-col" data-status="done">
-                         <div class="flex items-center justify-between mb-3 px-1">
-                            <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-2">
-                                <span class="w-2 h-2 rounded-full bg-emerald-400"></span> 已完成
-                            </span>
-                             <span id="count-done" class="text-xs text-gray-400">0</span>
-                        </div>
-                        <div id="board-done" class="flex-1 bg-gray-100/50 rounded-xl p-2 space-y-2 overflow-y-auto border border-gray-200/60"
-                             ondragover="allowDrop(event)" ondrop="drop(event, 'done')">
-                        </div>
+                         <div class="flex items-center justify-between mb-3 px-1"><span class="text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-emerald-400"></span> 已完成</span><span id="count-done" class="text-xs text-gray-400">0</span></div>
+                        <div id="board-done" class="flex-1 bg-gray-100/50 rounded-xl p-2 space-y-2 overflow-y-auto border border-gray-200/60" ondragover="allowDrop(event)" ondrop="drop(event, 'done')"></div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- 视图: 日历 (Calendar) -->
         <div id="view-calendar" class="hidden flex-1 flex flex-col overflow-hidden bg-white fade-in relative">
             <div class="px-4 sm:px-6 py-3 border-b border-gray-100 flex items-center justify-between shrink-0">
                 <div class="flex items-center space-x-2 sm:space-x-4">
+                    <!-- Switch to List View -->
+                    <button onclick="navigateTo('inbox')" class="p-1 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors mr-2" title="切换到列表">
+                         <i data-lucide="list" class="w-4 h-4"></i>
+                    </button>
                     <div class="flex items-center space-x-1 border border-gray-200 rounded-md bg-white shadow-sm p-0.5">
                         <button onclick="calNavigate(-1)" class="p-1 hover:bg-gray-100 rounded text-gray-500"><i data-lucide="chevron-left" class="w-4 h-4"></i></button>
                         <button onclick="calNavigate(1)" class="p-1 hover:bg-gray-100 rounded text-gray-500"><i data-lucide="chevron-right" class="w-4 h-4"></i></button>
                     </div>
-                    <h2 id="cal-header-title" class="text-base sm:text-lg font-semibold text-gray-900 tracking-tight w-32 sm:w-40 truncate">2025年 12月</h2>
+                    <h2 id="cal-header-title" class="text-base sm:text-lg font-semibold text-gray-900 tracking-tight w-32 sm:w-40 truncate"></h2>
                 </div>
-                
                 <div class="flex items-center space-x-3">
+                    <button onclick="toggleTimelineCompact()" id="btn-timeline-compact" class="hidden text-xs text-gray-500 hover:text-gray-900 flex items-center gap-1 border border-gray-200 rounded px-2 py-1"><i data-lucide="minimize-2" class="w-3 h-3"></i> 紧凑</button>
                     <div class="flex bg-gray-100 p-0.5 rounded-lg">
                         <button onclick="setCalView('month')" id="btn-view-month" class="px-2 sm:px-3 py-1 text-xs font-medium rounded-md shadow-sm bg-white text-gray-900 transition-all">月</button>
                         <button onclick="setCalView('week')" id="btn-view-week" class="px-2 sm:px-3 py-1 text-xs font-medium rounded-md text-gray-500 hover:text-gray-900 hover:bg-gray-200/50 transition-all">周</button>
+                        <button onclick="setCalView('timeline')" id="btn-view-timeline" class="px-2 sm:px-3 py-1 text-xs font-medium rounded-md text-gray-500 hover:text-gray-900 hover:bg-gray-200/50 transition-all flex items-center gap-1"><i data-lucide="gantt-chart-square" class="w-3 h-3"></i> 全景</button>
                     </div>
+
+                    <!-- Calendar Filter -->
+                    <div class="relative">
+                        <button onclick="toggleFilterDropdown('cal-filter-dropdown')" id="cal-filter-btn" class="flex items-center justify-center w-7 h-7 bg-white hover:bg-gray-50 text-gray-500 hover:text-gray-800 rounded text-xs font-medium transition-colors border border-gray-200 shadow-sm">
+                            <i data-lucide="filter" class="w-3.5 h-3.5"></i>
+                        </button>
+                        <div id="cal-filter-dropdown" class="filter-dropdown-menu hidden absolute right-0 top-full mt-2 w-56 bg-white rounded-lg shadow-xl border border-gray-100 z-50 overflow-hidden py-1 transform origin-top-right transition-all animate-in fade-in zoom-in-95 duration-100">
+                             <div class="px-3 py-2 bg-gray-50 border-b border-gray-100 text-[10px] font-semibold text-gray-400 uppercase tracking-wide flex justify-between">
+                                <span>选择项目</span>
+                                <button onclick="setProjectFilter(null); closeFilterDropdowns()" class="text-blue-600 hover:text-blue-800">重置</button>
+                            </div>
+                            <div class="filter-list-content max-h-60 overflow-y-auto p-1 space-y-0.5">
+                                <!-- Populated by JS -->
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
             </div>
-
-            <!-- 日历网格 -->
             <div id="cal-container" class="flex-1 flex flex-col min-h-0 select-none bg-white p-2 sm:p-4">
-                <div class="h-full flex flex-col border-t border-l border-gray-200 rounded-sm overflow-hidden shadow-[0_0_0_1px_rgba(0,0,0,0.02)]">
-                    <div id="cal-days-header" class="grid grid-cols-7 border-b border-gray-200 shrink-0 bg-gray-50">
-                        <!-- JS 渲染日期头 -->
-                    </div>
-                    <div class="flex-1 overflow-y-auto min-h-0 bg-white relative touch-pan-x touch-pan-y" id="calendar-body">
-                        <!-- JS 渲染任务网格 -->
+                <div id="cal-grid-wrapper" class="h-full flex flex-col border-t border-l border-gray-200 rounded-sm overflow-hidden shadow-[0_0_0_1px_rgba(0,0,0,0.02)]">
+                    <div id="cal-days-header" class="grid grid-cols-7 border-b border-gray-200 shrink-0 bg-gray-50"></div>
+                    <div class="flex-1 overflow-y-auto min-h-0 bg-white relative touch-pan-x touch-pan-y" id="calendar-body"></div>
+                </div>
+                <div id="cal-timeline-wrapper" class="hidden h-full flex flex-col border border-gray-200 rounded-md overflow-hidden bg-white">
+                    <div class="timeline-grid">
+                        <div class="timeline-sidebar bg-gray-50 border-r border-gray-200 flex flex-col">
+                            <div class="h-[40px] border-b border-gray-200 flex items-center px-4 bg-white shrink-0"><span class="text-xs font-semibold text-gray-500 uppercase">项目概览</span></div>
+                            <div id="timeline-project-list" class="flex-1 overflow-hidden space-y-[1px] bg-gray-100"></div>
+                        </div>
+                        <div class="timeline-content" id="timeline-scroll-area">
+                            <div id="timeline-header" class="timeline-header-row min-w-max"></div>
+                            <div id="timeline-body" class="min-w-max bg-white"></div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- 视图: 统计分析 (Statistics) -->
         <div id="view-stats" class="hidden flex-1 flex flex-col overflow-auto fade-in p-4 sm:p-8 bg-gray-50/50">
             <div class="max-w-5xl mx-auto w-full space-y-8 pb-10">
                 <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div>
-                        <h1 class="text-2xl font-semibold text-gray-900 tracking-tight mb-1">项目洞察</h1>
-                        <p class="text-sm text-gray-500 flex items-center gap-2">
-                            跨项目的任务负载分布。
-                        </p>
-                    </div>
-                    
+                    <div><h1 class="text-2xl font-semibold text-gray-900 tracking-tight mb-1">项目洞察</h1><p class="text-sm text-gray-500 flex items-center gap-2">查看当前任务负载分布。</p></div>
                     <div class="flex flex-wrap items-center gap-3">
-                        <!-- 日期选择 -->
                          <div class="flex items-center space-x-2 bg-white px-2 py-1 rounded-lg border border-gray-200 shadow-sm">
                             <input type="date" id="stats-start-date" class="text-xs border-none outline-none text-gray-600 bg-transparent font-medium p-0 w-24" onchange="updateStatsFromInputs()">
                             <span class="text-gray-300">-</span>
                             <input type="date" id="stats-end-date" class="text-xs border-none outline-none text-gray-600 bg-transparent font-medium p-0 w-24" onchange="updateStatsFromInputs()">
                         </div>
-
-                        <!-- 快速选择按钮 -->
                         <div class="bg-white p-1 rounded-lg border border-gray-200 flex shadow-sm overflow-x-auto">
                             <button onclick="setStatsPeriod('today')" id="stats-btn-today" class="px-3 py-1 text-xs font-medium rounded-md transition-all whitespace-nowrap">今天</button>
                             <button onclick="setStatsPeriod('week')" id="stats-btn-week" class="px-3 py-1 text-xs font-medium rounded-md transition-all whitespace-nowrap">本周</button>
@@ -308,53 +282,30 @@
                         </div>
                     </div>
                 </div>
-
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
-                        <div class="flex items-center space-x-2 text-gray-500 mb-2">
-                            <i data-lucide="layers" class="w-4 h-4"></i>
-                            <span class="text-xs font-medium uppercase tracking-wide">活跃项目</span>
-                        </div>
+                        <div class="flex items-center space-x-2 text-gray-500 mb-2"><i data-lucide="layers" class="w-4 h-4"></i><span class="text-xs font-medium uppercase tracking-wide">活跃项目</span></div>
                         <div class="text-3xl font-bold text-gray-900 tracking-tight" id="stat-project-count">0</div>
                     </div>
                     <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
-                        <div class="flex items-center space-x-2 text-gray-500 mb-2">
-                            <i data-lucide="clock" class="w-4 h-4"></i>
-                            <span class="text-xs font-medium uppercase tracking-wide">记录总天数</span>
-                        </div>
+                        <div class="flex items-center space-x-2 text-gray-500 mb-2"><i data-lucide="clock" class="w-4 h-4"></i><span class="text-xs font-medium uppercase tracking-wide">记录总天数</span></div>
                         <div class="text-3xl font-bold text-gray-900 tracking-tight" id="stat-total-days">0</div>
                     </div>
                     <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
-                         <div class="flex items-center space-x-2 text-gray-500 mb-2">
-                            <i data-lucide="check-circle" class="w-4 h-4"></i>
-                            <span class="text-xs font-medium uppercase tracking-wide">区间任务数</span>
-                        </div>
+                         <div class="flex items-center space-x-2 text-gray-500 mb-2"><i data-lucide="check-circle" class="w-4 h-4"></i><span class="text-xs font-medium uppercase tracking-wide">区间任务数</span></div>
                         <div class="text-3xl font-bold text-gray-900 tracking-tight" id="stat-task-count">0</div>
                     </div>
                 </div>
-
                 <div class="bg-white p-6 sm:p-8 rounded-xl border border-gray-200 shadow-sm">
-                    <div class="flex items-center justify-between mb-8">
-                        <h3 class="font-medium text-gray-900">项目工作负载 (天数)</h3>
-                    </div>
-                    
+                    <div class="flex items-center justify-between mb-8"><h3 class="font-medium text-gray-900">工作负载分布</h3></div>
                     <div class="flex flex-col md:flex-row items-center gap-10 md:gap-16">
-                        <!-- 饼图容器 -->
                         <div class="relative w-56 h-56 shrink-0 pie-entrance">
                             <div id="stats-pie-chart" class="w-full h-full rounded-full border border-gray-100 shadow-inner"></div>
-                            <!-- 中心挖空 -->
                             <div class="absolute inset-0 m-auto w-32 h-32 bg-white rounded-full flex items-center justify-center shadow-sm">
-                                <div class="text-center">
-                                    <div class="text-xs text-gray-400 font-medium uppercase tracking-wide mb-0.5">总计</div>
-                                    <div class="text-2xl font-bold text-gray-900 tracking-tight" id="pie-center-label">0d</div>
-                                </div>
+                                <div class="text-center"><div class="text-xs text-gray-400 font-medium uppercase tracking-wide mb-0.5">总计</div><div class="text-2xl font-bold text-gray-900 tracking-tight" id="pie-center-label">0d</div></div>
                             </div>
                         </div>
-
-                        <!-- 列表 -->
-                        <div class="flex-1 w-full space-y-4" id="stats-project-list">
-                            <!-- JS 注入 -->
-                        </div>
+                        <div class="flex-1 w-full space-y-4" id="stats-project-list"></div>
                     </div>
                 </div>
             </div>
@@ -362,102 +313,64 @@
 
     </main>
 
-    <!-- 编辑/新建任务 模态框 -->
-    <div id="modal-backdrop" class="fixed inset-0 bg-gray-900/20 backdrop-blur-[2px] z-40 hidden transition-opacity opacity-0" aria-hidden="true" onclick="closeModal()"></div>
+    <!-- Modals (Task & Import) -->
+    <div id="modal-backdrop" class="fixed inset-0 bg-gray-900/30 backdrop-blur-sm z-40 hidden transition-all duration-300 opacity-0" aria-hidden="true" onclick="closeAllModals()"></div>
+    
     <div id="modal-panel" class="fixed inset-y-0 right-0 w-full max-w-lg bg-white shadow-2xl z-50 transform translate-x-full slide-panel flex flex-col border-l border-gray-100">
         <input type="hidden" id="edit-task-id">
-        
         <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-white shrink-0">
             <h3 class="text-sm font-semibold text-gray-900" id="modal-title">任务详情</h3>
             <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600 p-2 hover:bg-gray-100 rounded active:bg-gray-200"><i data-lucide="x" class="w-5 h-5"></i></button>
         </div>
-        
         <div class="flex-1 overflow-y-auto px-6 sm:px-8 py-6 touch-pan-y">
             <div class="space-y-6">
                 <div class="group">
-                    <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">任务标题</label>
-                    <input id="input-title" type="text" placeholder="需要做什么？" class="w-full text-lg font-medium text-gray-900 placeholder:text-gray-300 border-b border-gray-200 focus:border-gray-900 p-0 py-2 bg-transparent tracking-tight outline-none transition-colors rounded-none">
+                    <div class="flex justify-between items-center mb-1.5">
+                        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide">任务标题</label>
+                        <div class="flex items-center gap-2">
+                            <label class="text-[10px] text-gray-400">颜色:</label>
+                            <input id="input-color" onchange="autoSaveTask()" type="color" class="w-5 h-5 cursor-pointer rounded border-none shadow-sm" value="#000000">
+                        </div>
+                    </div>
+                    <input id="input-title" oninput="autoSaveTask()" type="text" placeholder="需要做什么？" class="w-full text-lg font-medium text-gray-900 placeholder:text-gray-300 border-b border-gray-200 focus:border-gray-900 p-0 py-2 bg-transparent tracking-tight outline-none transition-colors rounded-none">
                 </div>
-                
                 <div>
                     <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">所属项目</label>
-                    
-                    <!-- 标准选择模式 -->
                     <div id="project-view-mode" class="flex items-center gap-2">
                         <div class="relative flex-1">
-                            <select id="input-project" class="w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-lg focus:ring-1 focus:ring-gray-900 focus:border-gray-900 block p-2.5 appearance-none cursor-pointer outline-none">
-                                <!-- JS 填充 -->
-                            </select>
+                            <select id="input-project" onchange="handleProjectChange(this.value); autoSaveTask()" class="w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-lg focus:ring-1 focus:ring-gray-900 focus:border-gray-900 block p-2.5 appearance-none cursor-pointer outline-none"></select>
                             <i data-lucide="chevron-down" class="w-4 h-4 text-gray-400 absolute right-3 top-3 pointer-events-none"></i>
                         </div>
-                        
-                        <!-- 设置菜单 -->
                         <div class="relative">
-                            <button type="button" onclick="toggleProjectMenu()" class="p-2.5 bg-white hover:bg-gray-50 active:bg-gray-100 rounded-lg text-gray-600 transition-colors border border-gray-200 shadow-sm">
-                                <i data-lucide="settings-2" class="w-4 h-4"></i>
-                            </button>
+                            <button type="button" onclick="toggleProjectMenu()" class="p-2.5 bg-white hover:bg-gray-50 active:bg-gray-100 rounded-lg text-gray-600 transition-colors border border-gray-200 shadow-sm"><i data-lucide="settings-2" class="w-4 h-4"></i></button>
                             <div id="project-menu" class="hidden absolute right-0 top-full mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-100 z-50 overflow-hidden py-1 ring-1 ring-black ring-opacity-5">
-                                <button type="button" onclick="enableProjectEditMode()" class="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 active:bg-gray-100 flex items-center gap-2">
-                                    <i data-lucide="pencil" class="w-3.5 h-3.5 text-gray-400"></i> 管理项目
-                                </button>
+                                <button type="button" onclick="enableProjectEditMode()" class="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 active:bg-gray-100 flex items-center gap-2"><i data-lucide="pencil" class="w-3.5 h-3.5 text-gray-400"></i> 管理项目</button>
                             </div>
                         </div>
                     </div>
-
-                    <!-- 编辑模式 UI -->
                     <div id="project-edit-mode" class="hidden mt-1 p-1">
                         <div class="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
-                            <button onclick="addProjectParent()" class="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center mb-4 transition-colors p-1">
-                                <i data-lucide="plus" class="w-4 h-4 mr-2"></i> 添加选项
-                            </button>
-                            
-                            <div id="project-editor-list" class="space-y-2">
-                                <!-- 动态行 -->
-                            </div>
+                            <button onclick="addProjectParent()" class="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center mb-4 transition-colors p-1"><i data-lucide="plus" class="w-4 h-4 mr-2"></i> 添加选项</button>
+                            <div id="project-editor-list" class="space-y-2"></div>
                         </div>
-                        <div class="flex justify-end mt-3">
-                             <button type="button" onclick="closeProjectEditMode()" class="text-xs bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-md shadow-sm font-medium">完成</button>
-                        </div>
+                        <div class="flex justify-end mt-3"><button type="button" onclick="closeProjectEditMode()" class="text-xs bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-md shadow-sm font-medium">完成</button></div>
                     </div>
-
                 </div>
-
                 <div class="grid grid-cols-2 gap-6">
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">开始日期</label>
-                        <input id="input-start" type="date" class="w-full bg-white border border-gray-200 text-gray-900 text-sm rounded-lg focus:ring-1 focus:ring-gray-900 outline-none block p-2.5">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">截止日期</label>
-                        <input id="input-end" type="date" class="w-full bg-white border border-gray-200 text-gray-900 text-sm rounded-lg focus:ring-1 focus:ring-gray-900 outline-none block p-2.5">
-                    </div>
+                    <div><label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">开始日期</label><input id="input-start" onchange="autoSaveTask()" type="date" class="w-full bg-white border border-gray-200 text-gray-900 text-sm rounded-lg focus:ring-1 focus:ring-gray-900 outline-none block p-2.5"></div>
+                    <div><label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">截止日期</label><input id="input-end" onchange="autoSaveTask()" type="date" class="w-full bg-white border border-gray-200 text-gray-900 text-sm rounded-lg focus:ring-1 focus:ring-gray-900 outline-none block p-2.5"></div>
                 </div>
-
-                <div>
-                    <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">描述</label>
-                    <textarea id="input-desc" rows="4" placeholder="添加任务详情..." class="w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-lg focus:ring-1 focus:ring-gray-900 outline-none block p-2.5 resize-none placeholder:text-gray-400"></textarea>
-                </div>
-
+                <div><label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">描述</label><textarea id="input-desc" oninput="autoSaveTask()" rows="4" placeholder="添加任务详情..." class="w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-lg focus:ring-1 focus:ring-gray-900 outline-none block p-2.5 resize-none placeholder:text-gray-400"></textarea></div>
                 <div>
                     <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">状态</label>
                     <div class="flex space-x-4">
-                        <label class="flex items-center space-x-2 cursor-pointer p-1">
-                            <input type="radio" name="status" value="todo" checked class="text-gray-900 focus:ring-gray-900 w-4 h-4">
-                            <span class="text-sm text-gray-700">待办</span>
-                        </label>
-                        <label class="flex items-center space-x-2 cursor-pointer p-1">
-                            <input type="radio" name="status" value="inprogress" class="text-gray-900 focus:ring-gray-900 w-4 h-4">
-                            <span class="text-sm text-gray-700">进行中</span>
-                        </label>
-                        <label class="flex items-center space-x-2 cursor-pointer p-1">
-                            <input type="radio" name="status" value="done" class="text-gray-900 focus:ring-gray-900 w-4 h-4">
-                            <span class="text-sm text-gray-700">已完成</span>
-                        </label>
+                        <label class="flex items-center space-x-2 cursor-pointer p-1"><input type="radio" onchange="autoSaveTask()" name="status" value="todo" checked class="text-gray-900 focus:ring-gray-900 w-4 h-4"><span class="text-sm text-gray-700">待办</span></label>
+                        <label class="flex items-center space-x-2 cursor-pointer p-1"><input type="radio" onchange="autoSaveTask()" name="status" value="inprogress" class="text-gray-900 focus:ring-gray-900 w-4 h-4"><span class="text-sm text-gray-700">进行中</span></label>
+                        <label class="flex items-center space-x-2 cursor-pointer p-1"><input type="radio" onchange="autoSaveTask()" name="status" value="done" class="text-gray-900 focus:ring-gray-900 w-4 h-4"><span class="text-sm text-gray-700">已完成</span></label>
                     </div>
                 </div>
             </div>
         </div>
-
         <div class="px-6 py-4 border-t border-gray-100 bg-gray-50/50 flex items-center justify-between shrink-0 mb-safe pb-safe">
             <button type="button" id="btn-delete-task" onclick="deleteCurrentTask()" class="text-sm font-medium text-red-500 hover:text-red-700 px-3 py-2 hidden active:bg-red-50 rounded transition-colors select-none">删除任务</button>
             <div class="flex space-x-3 ml-auto">
@@ -467,1015 +380,620 @@
         </div>
     </div>
 
+    <div id="modal-import" class="fixed inset-0 z-50 hidden flex items-center justify-center pointer-events-none">
+        <div class="bg-white w-full max-w-2xl mx-4 rounded-xl shadow-2xl border border-gray-100 overflow-hidden flex flex-col pointer-events-auto transform scale-95 opacity-0 transition-all duration-200" id="import-modal-content">
+            <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-white">
+                <div class="flex items-center gap-2"><i data-lucide="file-json" class="w-5 h-5 text-gray-700"></i><h3 class="text-sm font-semibold text-gray-900">导入 AI 生成任务</h3></div>
+                <button onclick="closeImportModal()" class="text-gray-400 hover:text-gray-600 p-1 rounded"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <div class="p-6 bg-gray-50/50">
+                <div class="bg-blue-50 border border-blue-100 rounded-lg p-3 mb-4 text-xs text-blue-700 flex gap-2"><i data-lucide="info" class="w-4 h-4 shrink-0 mt-0.5"></i><div>请将在 AI (ChatGPT/Claude) 中生成的 JSON 代码直接粘贴到下方。</div></div>
+                <textarea id="import-json-area" rows="10" class="w-full text-xs font-mono bg-white border border-gray-300 rounded-lg p-3 outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 resize-none" placeholder='[{"title":"任务","start":"2025-01-01","end":"2025-01-02","project":"设计","status":"todo"}]'></textarea>
+            </div>
+            <div class="px-6 py-4 border-t border-gray-100 bg-white flex justify-end gap-3">
+                <button onclick="closeImportModal()" class="px-4 py-2 text-xs font-medium text-gray-600 hover:text-gray-900">取消</button>
+                <button onclick="processImport()" class="bg-gray-900 hover:bg-gray-800 text-white px-4 py-2 rounded-md text-xs font-medium shadow-sm transition-transform active:scale-95">确认导入</button>
+            </div>
+        </div>
+    </div>
+
     <script>
-        // --- 数据持久化与状态 ---
         const STORAGE_KEY = 'nexus_tasks';
-
-        const defaultTasks = [
-            { id: 1, title: '初始化系统设置', project: '设计系统', start: '2025-12-08', end: '2025-12-10', status: 'todo', desc: '' },
-            { id: 2, title: '数据库迁移', project: '后端开发', start: '2025-12-11', end: '2025-12-12', status: 'inprogress', desc: '' },
-            { id: 3, title: '审查 Q4 指标', project: '待办中心', start: '2025-12-09', end: '2025-12-09', status: 'done', desc: '' },
-            { id: 4, title: '用户测试', project: '设计系统', start: '2025-12-11', end: '2025-12-14', status: 'todo', desc: '' }
-        ];
-
-        const defaultProjects = [
-            { id: 'p1', name: '待办中心', color: 'bg-gray-400', hex: '#9ca3af', expanded: true, children: [] },
-            { id: 'p2', name: '设计系统', color: 'bg-blue-400', hex: '#60a5fa', expanded: true, children: [] },
-            { id: 'p3', name: '开发中心', color: 'bg-amber-400', hex: '#fbbf24', expanded: true, children: [] }
-        ];
+        const defaultTasks = [{ id: 1, title: '初始化系统设置', project: '设计系统', start: '2025-12-08', end: '2025-12-10', status: 'todo', desc: '', color: '#60a5fa' }, { id: 2, title: '数据库迁移', project: '后端开发', start: '2025-12-11', end: '2025-12-12', status: 'inprogress', desc: '', color: '#fbbf24' }, { id: 3, title: '审查 Q4 指标', project: '待办中心', start: '2025-12-09', end: '2025-12-09', status: 'done', desc: '', color: '#9ca3af' }, { id: 4, title: '用户测试', project: '设计系统', start: '2025-12-11', end: '2025-12-14', status: 'todo', desc: '', color: '#60a5fa' }];
+        const defaultProjects = [{ id: 'p1', name: '待办中心', hex: '#9ca3af', expanded: true, children: [] }, { id: 'p2', name: '设计系统', hex: '#60a5fa', expanded: true, children: [] }, { id: 'p3', name: '开发中心', hex: '#fbbf24', expanded: true, children: [{id: 'c1', name: '后端开发'}, {id: 'c2', name: '前端开发'}] }];
         
-        // 步骤一：创建加载和保存函数
-        function loadTasks() {
-            const stored = localStorage.getItem(STORAGE_KEY);
-            if (stored) {
-                try {
-                    return JSON.parse(stored);
-                } catch (e) {
-                    return [];
-                }
-            }
-            // 如果不存在，为了保持演示效果，返回默认数据
-            // (严格按照要求应返回 [], 但为了符合 "保持原有设计" 的要求，这里用 defaultTasks 作为初始状态)
-            return defaultTasks;
-        }
+        let tasks = JSON.parse(localStorage.getItem(STORAGE_KEY)) || defaultTasks;
+        let projectList = JSON.parse(localStorage.getItem('nexus_projects')) || defaultProjects;
+        let userName = localStorage.getItem('nexus_username') || "John Doe";
+        let currentCalDate = { year: 2025, month: 11, day: 1 };
+        let calView = 'month', statsPeriod = 'month', currentView = 'inbox';
+        let currentFilterId = null; 
+        let isTimelineCompact = false;
+        let filterExpandedState = {}; 
+
+        projectList.forEach(p => { if(p.name === '收件箱') p.name = '待办中心'; });
+        tasks.forEach(t => { if(t.project === '收件箱') t.project = '待办中心'; });
 
         function saveTasks() {
-            // 保存任务数据到 STORAGE_KEY
             localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
-            
-            // 同时保存项目和用户设置，以维持应用的完整功能
             localStorage.setItem('nexus_projects', JSON.stringify(projectList));
             localStorage.setItem('nexus_username', userName);
         }
 
-        // 步骤二：初始化数据
-        let tasks = loadTasks();
-        let projectList = JSON.parse(localStorage.getItem('nexus_projects')) || defaultProjects;
-        let userName = localStorage.getItem('nexus_username') || "John Doe";
-
-        // 数据修正（兼容旧数据）
-        projectList.forEach(p => { if(p.name === '收件箱') p.name = '待办中心'; });
-        tasks.forEach(t => { if(t.project === '收件箱') t.project = '待办中心'; });
-
         function initUser() {
             document.getElementById('user-name').innerText = userName;
-            updateAvatar(userName);
+            let i = "", p = userName.split(' '); i = p.length >= 2 ? p[0][0] + p[1][0] : userName.substring(0, 2);
+            document.getElementById('user-avatar').innerText = i.toUpperCase();
         }
+        function saveUserName(n) { userName = n.trim() || "John Doe"; initUser(); saveTasks(); }
         
-        function saveUserName(newName) {
-            userName = newName.trim() || "John Doe";
-            document.getElementById('user-name').innerText = userName;
-            updateAvatar(userName);
-            saveTasks(); // 步骤三：修改后调用保存
-        }
-
-        function updateAvatar(name) {
-            let initials = "";
-            const parts = name.split(' ');
-            if (parts.length >= 2) initials = parts[0][0] + parts[1][0];
-            else if (name.length >= 2) initials = name.substring(0, 2);
-            else initials = name.substring(0, 1);
-            document.getElementById('user-avatar').innerText = initials.toUpperCase();
-        }
-
-        // 视图状态
-        let currentCalDate = { year: 2025, month: 11, day: 1 };
-        let calView = 'month'; 
-        let statsPeriod = 'month'; 
-        let currentView = 'inbox';
-        
-        // 移动端侧边栏逻辑
         function toggleSidebar() {
-            const sidebar = document.getElementById('main-sidebar');
-            const backdrop = document.getElementById('mobile-sidebar-backdrop');
-            
-            if (sidebar.classList.contains('-translate-x-full')) {
-                // Open
-                sidebar.classList.remove('-translate-x-full');
-                backdrop.classList.remove('hidden');
-                void backdrop.offsetWidth; // trigger reflow
-                backdrop.classList.remove('opacity-0');
-            } else {
-                // Close
-                sidebar.classList.add('-translate-x-full');
-                backdrop.classList.add('opacity-0');
-                setTimeout(() => {
-                    backdrop.classList.add('hidden');
-                }, 300);
-            }
+            const s = document.getElementById('main-sidebar'), b = document.getElementById('mobile-sidebar-backdrop');
+            const c = s.classList.contains('-translate-x-full');
+            s.classList.toggle('-translate-x-full', !c); b.classList.toggle('hidden', !c);
+            if(c) { void b.offsetWidth; b.classList.remove('opacity-0'); } else { b.classList.add('opacity-0'); setTimeout(() => b.classList.add('hidden'), 300); }
         }
 
-        function navigateTo(view) {
-            currentView = view;
-            // 移动端点击导航后自动收起侧边栏
-            if(window.innerWidth < 768) {
-                const sidebar = document.getElementById('main-sidebar');
-                if (!sidebar.classList.contains('-translate-x-full')) {
-                    toggleSidebar();
-                }
-            }
-
-            const views = ['inbox', 'projects', 'calendar', 'stats'];
-            const navs = ['nav-inbox', 'nav-projects', 'nav-calendar', 'nav-stats'];
-            const titles = { 'inbox': '待办中心', 'projects': '项目看板', 'calendar': '日历视图', 'stats': '统计分析' };
-
-            views.forEach(v => document.getElementById(`view-${v}`).classList.add('hidden'));
-            navs.forEach(n => {
-                const el = document.getElementById(n);
-                if(el) {
-                    el.classList.remove('bg-gray-200/60', 'text-gray-900');
-                    el.classList.add('text-gray-500', 'hover:bg-gray-100');
-                }
+        function navigateTo(v) {
+            currentView = v;
+            if(window.innerWidth < 768) { const s = document.getElementById('main-sidebar'); if (!s.classList.contains('-translate-x-full')) toggleSidebar(); }
+            ['inbox', 'projects', 'calendar', 'stats'].forEach(x => {
+                document.getElementById(`view-${x}`).classList.add('hidden');
+                const n = document.getElementById(`nav-${x}`);
+                n.classList.remove('bg-gray-200/60', 'text-gray-900'); n.classList.add('text-gray-500', 'hover:bg-gray-100');
             });
-
-            document.getElementById(`view-${view}`).classList.remove('hidden');
-            const activeNav = document.getElementById(`nav-${view}`);
-            if(activeNav) {
-                activeNav.classList.remove('text-gray-500', 'hover:bg-gray-100');
-                activeNav.classList.add('bg-gray-200/60', 'text-gray-900');
-            }
-            document.getElementById('page-title').innerText = titles[view];
-
+            document.getElementById(`view-${v}`).classList.remove('hidden');
+            const a = document.getElementById(`nav-${v}`); a.classList.remove('text-gray-500', 'hover:bg-gray-100'); a.classList.add('bg-gray-200/60', 'text-gray-900');
+            document.getElementById('page-title').innerText = { 'inbox': '列表视图', 'projects': '看板视图', 'calendar': '日历视图', 'stats': '统计分析' }[v];
             renderAllViews();
         }
 
-        function renderAllViews() {
-            if(currentView === 'inbox') renderInbox();
-            if(currentView === 'projects') renderProjects();
-            if(currentView === 'calendar') renderCalendar();
-            if(currentView === 'stats') renderStats();
-            if(window.lucide) lucide.createIcons();
-            
-            // 重新绑定触摸事件
-            setTimeout(() => {
-                if(currentView === 'projects' || currentView === 'calendar') {
-                    TouchDragManager.init();
-                }
-            }, 100);
-        }
-
-        // --- 收件箱渲染 ---
-        function renderInbox() {
-            const list = document.getElementById('inbox-list');
-            const completedList = document.getElementById('inbox-completed-list');
-            list.innerHTML = ''; completedList.innerHTML = '';
-            let activeCount = 0;
-
-            tasks.forEach(task => {
-                const isDone = task.status === 'done';
-                const container = isDone ? completedList : list;
-                if(!isDone) activeCount++;
-
-                const el = document.createElement('div');
-                el.className = `group flex items-center p-3 hover:bg-gray-50 rounded-lg cursor-pointer border border-transparent hover:border-gray-200 transition-all ${isDone ? 'opacity-60' : ''}`;
-                
-                const checkColor = isDone ? 'text-gray-400' : 'text-gray-300 group-hover:text-gray-400';
-                
-                el.innerHTML = `
-                    <div onclick="event.stopPropagation(); toggleTaskStatus(${task.id})" class="mr-3 ${checkColor} transition-colors hover:text-gray-600 shrink-0 p-1">
-                        <i data-lucide="${isDone ? 'check-square' : 'square'}" class="w-5 h-5"></i>
-                    </div>
-                    <div class="flex flex-col flex-1 min-w-0" onclick="openModal(${task.id})">
-                        <span class="text-sm ${isDone ? 'text-gray-500 line-through' : 'text-gray-700 font-medium'} truncate">${task.title}</span>
-                        <span class="text-xs text-gray-400 truncate">${task.project} • ${formatDateDisplay(task.start)}</span>
-                    </div>
-                    <div class="ml-auto pl-2 shrink-0" onclick="openModal(${task.id})">
-                         <span class="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">${task.project}</span>
-                    </div>
-                `;
-                container.appendChild(el);
+        function getProjectColor(pName) {
+            let color = '#9ca3af';
+            projectList.forEach(p => {
+                if(p.name === pName) color = p.hex;
+                if(p.children) p.children.forEach(c => { if(c.name === pName) color = p.hex; });
             });
-            document.getElementById('inbox-count').innerText = activeCount;
+            return color;
         }
 
-        // --- 项目看板渲染 ---
+        function getFilteredTasks() {
+            if(!currentFilterId) return tasks;
+            const p = projectList.find(x => x.id === currentFilterId);
+            if(!p) {
+                 let foundChildName = null;
+                 projectList.forEach(parent => { if(parent.children) parent.children.forEach(c => { if(c.id === currentFilterId) foundChildName = c.name; }); });
+                 if(foundChildName) return tasks.filter(t => t.project === foundChildName);
+                 return tasks;
+            }
+            const targetNames = [p.name, ...(p.children||[]).map(c=>c.name)];
+            return tasks.filter(t => targetNames.includes(t.project));
+        }
+
+        /* --- Filter Dropdown Logic --- */
+        function toggleFilterDropdown(id) {
+            const d = document.getElementById(id);
+            if(d.classList.contains('hidden')) {
+                closeFilterDropdowns(); // Close others
+                renderFilterListContent();
+                d.classList.remove('hidden');
+            } else {
+                d.classList.add('hidden');
+            }
+        }
+        
+        function closeFilterDropdowns() {
+            document.querySelectorAll('.filter-dropdown-menu').forEach(el => el.classList.add('hidden'));
+        }
+
+        document.addEventListener('click', e => {
+            if (!e.target.closest('button[onclick^="toggleFilterDropdown"]') && !e.target.closest('.filter-dropdown-menu')) closeFilterDropdowns();
+        });
+
+        function setProjectFilter(id) {
+            currentFilterId = id;
+            const labels = document.querySelectorAll('.current-filter-label');
+            
+            if(!id) {
+                labels.forEach(l => l.innerText = "项目筛选");
+            } else {
+                let pName = "";
+                const p = projectList.find(x => x.id === id);
+                if(p) pName = p.name;
+                else { projectList.forEach(parent => { if(parent.children) parent.children.forEach(c => { if(c.id === id) pName = c.name; }); }); }
+                labels.forEach(l => l.innerText = pName);
+            }
+            closeFilterDropdowns();
+            renderAllViews();
+        }
+        
+        function toggleFilterExpand(e, pid) {
+            e.stopPropagation();
+            filterExpandedState[pid] = !filterExpandedState[pid];
+            renderFilterListContent();
+        }
+
+        function renderFilterListContent() {
+            const containers = document.querySelectorAll('.filter-list-content');
+            containers.forEach(c => {
+                c.innerHTML = '';
+                projectList.forEach(p => {
+                    const isActive = currentFilterId === p.id;
+                    const hasChildren = p.children && p.children.length > 0;
+                    const isExpanded = filterExpandedState[p.id];
+                    const activeClass = isActive ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-100';
+                    
+                    let html = `<div class="flex items-center space-x-1 mb-0.5">`;
+                    html += `<div onclick="setProjectFilter('${p.id}')" class="cursor-pointer flex-1 flex items-center space-x-2 px-2 py-1.5 rounded-md text-xs transition-colors ${activeClass}">`;
+                    html += `<span class="w-2 h-2 rounded-full shrink-0" style="background-color:${p.hex}"></span><span class="truncate flex-1 font-medium">${p.name}</span>${isActive?'<i data-lucide="check" class="w-3 h-3"></i>':''}</div>`;
+                    
+                    if (hasChildren) {
+                         html += `<button onclick="toggleFilterExpand(event, '${p.id}')" class="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors"><i data-lucide="${isExpanded ? 'chevron-down' : 'chevron-right'}" class="w-3.5 h-3.5"></i></button>`;
+                    } else {
+                        html += `<div class="w-6"></div>`; 
+                    }
+                    html += `</div>`;
+
+                    if(hasChildren && isExpanded) {
+                        html += `<div class="ml-2 pl-2 border-l border-gray-100 space-y-0.5 animate-in fade-in slide-in-from-top-1 duration-200">`;
+                        p.children.forEach(sub => {
+                            const isSubActive = currentFilterId === sub.id;
+                            const subClass = isSubActive ? 'bg-blue-50 text-blue-700' : 'text-gray-500 hover:bg-gray-100';
+                            html += `<div onclick="setProjectFilter('${sub.id}')" class="cursor-pointer px-2 py-1 rounded-md text-xs truncate transition-colors ${subClass} flex items-center justify-between"><span>${sub.name}</span>${isSubActive?'<i data-lucide="check" class="w-3 h-3"></i>':''}</div>`;
+                        });
+                        html += `</div>`;
+                    }
+                    c.innerHTML += html;
+                });
+            });
+            if(window.lucide) lucide.createIcons();
+        }
+
+        function renderAllViews() {
+            if(currentView === 'inbox') renderInbox(); else if(currentView === 'projects') renderProjects();
+            else if(currentView === 'calendar') renderCalendar(); else if(currentView === 'stats') renderStats();
+            if(window.lucide) lucide.createIcons();
+            setTimeout(() => { if(['projects','calendar'].includes(currentView)) TouchDragManager.init(); }, 100);
+        }
+
+        function renderInbox() {
+            const l = document.getElementById('inbox-list'), cl = document.getElementById('inbox-completed-list'); l.innerHTML = ''; cl.innerHTML = ''; let c = 0;
+            const visibleTasks = getFilteredTasks();
+            visibleTasks.forEach(t => {
+                const d = t.status === 'done'; if(!d) c++;
+                const color = t.color || getProjectColor(t.project);
+                (d ? cl : l).innerHTML += `<div class="group flex items-center p-3 hover:bg-gray-50 rounded-lg cursor-pointer border border-transparent hover:border-gray-200 transition-all ${d ? 'opacity-60' : ''}">
+                    <div onclick="event.stopPropagation(); toggleTaskStatus(${t.id})" class="mr-3 ${d ? 'text-gray-400' : 'text-gray-300 group-hover:text-gray-400'} shrink-0 p-1"><i data-lucide="${d ? 'check-square' : 'square'}" class="w-5 h-5"></i></div>
+                    <div class="flex flex-col flex-1 min-w-0" onclick="openModal(${t.id})"><span class="text-sm ${d ? 'text-gray-500 line-through' : 'text-gray-700 font-medium'} truncate">${t.title}</span><span class="text-xs text-gray-400 truncate flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full" style="background-color:${color}"></span>${t.project} • ${formatDateDisplay(t.start)}</span></div>
+                    <div class="ml-auto pl-2 shrink-0" onclick="openModal(${t.id})"><span class="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">${t.project}</span></div></div>`;
+            });
+            document.getElementById('inbox-count').innerText = c;
+        }
+
         function renderProjects() {
             const cols = { 'todo': document.getElementById('board-todo'), 'inprogress': document.getElementById('board-inprogress'), 'done': document.getElementById('board-done') };
-            const counts = { 'todo': document.getElementById('count-todo'), 'inprogress': document.getElementById('count-inprogress'), 'done': document.getElementById('count-done') };
-            
-            Object.values(cols).forEach(el => el.innerHTML = '');
-            let countVals = { 'todo': 0, 'inprogress': 0, 'done': 0 };
-
-            tasks.forEach(task => {
-                const colId = task.status;
-                if(!cols[colId]) return; 
-
-                countVals[colId]++;
+            Object.values(cols).forEach(e => e.innerHTML = ''); let counts = { 'todo': 0, 'inprogress': 0, 'done': 0 };
+            const visibleTasks = getFilteredTasks();
+            visibleTasks.forEach(t => {
+                if(!cols[t.status]) return;
+                counts[t.status]++;
+                const color = t.color || getProjectColor(t.project);
                 const el = document.createElement('div');
-                el.className = 'bg-white p-3 rounded-lg border border-gray-200 shadow-sm cursor-grab hover:shadow-md transition-all active:cursor-grabbing select-none group touch-action-none kanban-item';
-                el.setAttribute('data-task-id', task.id);
-                // HTML5 Drag
-                el.draggable = true;
-                el.ondragstart = (e) => dragStartKanban(e, task.id);
-                el.onclick = () => openModal(task.id);
-                
-                el.innerHTML = `
-                    <div class="text-xs text-gray-400 mb-1 flex justify-between pointer-events-none">
-                        <span>${task.project}</span>
-                        <span>${formatDateDisplay(task.start)}</span>
-                    </div>
-                    <div class="text-sm font-medium text-gray-800 leading-tight mb-2 pointer-events-none">${task.title}</div>
-                    <div class="flex items-center justify-end pointer-events-none">
-                         <div class="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center text-[10px] text-gray-500 group-hover:bg-gray-200 transition-colors">JD</div>
-                    </div>
-                `;
-                cols[colId].appendChild(el);
+                el.className = 'bg-white p-3 rounded-lg border border-gray-200 shadow-sm cursor-grab hover:shadow-md transition-all select-none group touch-action-none kanban-item';
+                el.draggable = true; el.ondragstart = (e) => { e.dataTransfer.setData("text/plain", t.id); }; el.onclick = () => openModal(t.id); el.setAttribute('data-task-id', t.id);
+                el.innerHTML = `<div class="text-xs text-gray-400 mb-1 flex justify-between pointer-events-none"><span class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full" style="background-color:${color}"></span>${t.project}</span><span>${formatDateDisplay(t.start)}</span></div><div class="text-sm font-medium text-gray-800 leading-tight mb-2 pointer-events-none">${t.title}</div><div class="flex items-center justify-end pointer-events-none"><div class="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center text-[10px] text-gray-500 group-hover:bg-gray-200">JD</div></div>`;
+                cols[t.status].appendChild(el);
             });
-            Object.keys(countVals).forEach(key => counts[key].innerText = countVals[key]);
+            ['todo','inprogress','done'].forEach(k => document.getElementById(`count-${k}`).innerText = counts[k]);
         }
 
-        // --- 日历逻辑 ---
-        function setCalView(view) {
-            calView = view;
-            renderCalendar();
-            ['month', 'week'].forEach(v => {
-                const btn = document.getElementById(`btn-view-${v}`);
-                if(v === view) {
-                    btn.classList.remove('text-gray-500', 'hover:text-gray-900', 'hover:bg-gray-200/50');
-                    btn.classList.add('bg-white', 'text-gray-900', 'shadow-sm');
-                } else {
-                    btn.classList.add('text-gray-500', 'hover:text-gray-900', 'hover:bg-gray-200/50');
-                    btn.classList.remove('bg-white', 'text-gray-900', 'shadow-sm');
-                }
+        function setCalView(v) { 
+            calView = v; renderCalendar();
+            ['month', 'week', 'timeline'].forEach(x => { 
+                const b = document.getElementById(`btn-view-${x}`);
+                const active = 'px-2 sm:px-3 py-1 text-xs font-medium rounded-md shadow-sm bg-white text-gray-900 transition-all flex items-center gap-1';
+                const inactive = 'px-2 sm:px-3 py-1 text-xs font-medium rounded-md text-gray-500 hover:text-gray-900 hover:bg-gray-200/50 transition-all flex items-center gap-1';
+                b.className = x === v ? active : inactive; 
             });
+            const compactBtn = document.getElementById('btn-timeline-compact');
+            if(v === 'timeline') compactBtn.classList.remove('hidden');
+            else compactBtn.classList.add('hidden');
         }
 
-        function calNavigate(dir) {
-            if (calView === 'month') {
-                currentCalDate.month += dir;
-                if(currentCalDate.month > 11) { currentCalDate.month = 0; currentCalDate.year++; }
-                if(currentCalDate.month < 0) { currentCalDate.month = 11; currentCalDate.year--; }
+        function toggleTimelineCompact() {
+            isTimelineCompact = !isTimelineCompact;
+            const btn = document.getElementById('btn-timeline-compact');
+            if(isTimelineCompact) {
+                btn.classList.add('bg-gray-200', 'text-gray-900', 'border-gray-300');
+                btn.classList.remove('text-gray-500');
             } else {
-                let d = new Date(currentCalDate.year, currentCalDate.month, currentCalDate.day + (dir * 7));
-                currentCalDate.year = d.getFullYear();
-                currentCalDate.month = d.getMonth();
-                currentCalDate.day = d.getDate();
+                btn.classList.remove('bg-gray-200', 'text-gray-900', 'border-gray-300');
+                btn.classList.add('text-gray-500');
+            }
+            renderCalendar();
+        }
+
+        function calNavigate(d) {
+            if (calView === 'month') { 
+                currentCalDate.month += d; 
+                if(currentCalDate.month > 11) { currentCalDate.month = 0; currentCalDate.year++; } 
+                else if(currentCalDate.month < 0) { currentCalDate.month = 11; currentCalDate.year--; } 
+            } else if (calView === 'week') { 
+                const dt = new Date(currentCalDate.year, currentCalDate.month, currentCalDate.day + (d * 7)); 
+                currentCalDate.year = dt.getFullYear(); currentCalDate.month = dt.getMonth(); currentCalDate.day = dt.getDate(); 
+            } else if (calView === 'timeline') {
+                currentCalDate.month += d; 
+                if(currentCalDate.month > 11) { currentCalDate.month = 0; currentCalDate.year++; } 
+                else if(currentCalDate.month < 0) { currentCalDate.month = 11; currentCalDate.year--; } 
             }
             renderCalendar();
         }
 
         function renderCalendar() {
-            const gridBody = document.getElementById('calendar-body');
-            const headerRow = document.getElementById('cal-days-header');
-            const titleEl = document.getElementById('cal-header-title');
+            const title = document.getElementById('cal-header-title');
+            const stdGrid = document.getElementById('cal-grid-wrapper');
+            const timeGrid = document.getElementById('cal-timeline-wrapper');
+            const mN = ["一月","二月","三月","四月","五月","六月","七月","八月","九月","十月","十一月","十二月"];
             
-            gridBody.innerHTML = '';
-            headerRow.innerHTML = '';
-            
-            const monthNames = ["一月","二月","三月","四月","五月","六月","七月","八月","九月","十月","十一月","十二月"];
-            const weekDays = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"];
-            
-            let daysToRender = [];
-            let startDate;
+            if (calView === 'timeline') {
+                stdGrid.classList.add('hidden');
+                timeGrid.classList.remove('hidden');
+                title.innerText = `${currentCalDate.year}年 ${mN[currentCalDate.month]} (全景)`;
+                renderTimelineView();
+                return;
+            }
+
+            stdGrid.classList.remove('hidden');
+            timeGrid.classList.add('hidden');
+
+            const gb = document.getElementById('calendar-body'), hr = document.getElementById('cal-days-header');
+            gb.innerHTML = ''; hr.innerHTML = '';
+            const wDs = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"];
+            let days = [], start;
 
             if (calView === 'month') {
-                titleEl.innerText = `${currentCalDate.year}年 ${monthNames[currentCalDate.month]}`;
-                const firstDayOfMonth = new Date(currentCalDate.year, currentCalDate.month, 1);
-                const startDayOffset = (firstDayOfMonth.getDay() + 6) % 7; 
-                startDate = new Date(currentCalDate.year, currentCalDate.month, 1 - startDayOffset);
-                
-                weekDays.forEach(d => {
-                    headerRow.innerHTML += `<div class="py-2 text-center text-[10px] sm:text-[11px] font-semibold text-gray-400 uppercase tracking-wider border-r border-gray-100 last:border-r-0">${d.replace('周','')}</div>`;
-                });
-
-                for(let i=0; i<35; i++) {
-                    let d = new Date(startDate);
-                    d.setDate(startDate.getDate() + i);
-                    daysToRender.push(d);
-                }
+                title.innerText = `${currentCalDate.year}年 ${mN[currentCalDate.month]}`;
+                const f = new Date(currentCalDate.year, currentCalDate.month, 1); start = new Date(currentCalDate.year, currentCalDate.month, 1 - (f.getDay() + 6) % 7);
+                wDs.forEach(d => hr.innerHTML += `<div class="py-2 text-center text-[10px] sm:text-[11px] font-semibold text-gray-400 uppercase border-r border-gray-100 last:border-r-0">${d.replace('周','')}</div>`);
+                for(let i=0; i<35; i++) { const d = new Date(start); d.setDate(start.getDate() + i); days.push(d); }
             } else {
-                // Week
-                const curr = new Date(currentCalDate.year, currentCalDate.month, currentCalDate.day);
-                const dayOffset = (curr.getDay() + 6) % 7;
-                startDate = new Date(curr.setDate(curr.getDate() - dayOffset));
-                titleEl.innerText = `${startDate.getDate()}日 - ${monthNames[startDate.getMonth()]} (本周)`;
-
-                for(let i=0; i<7; i++) {
-                    let d = new Date(startDate);
-                    d.setDate(startDate.getDate() + i);
-                    daysToRender.push(d);
-                    const dName = weekDays[i];
-                    headerRow.innerHTML += `<div class="py-2 text-center text-[10px] sm:text-[11px] font-semibold text-gray-400 uppercase tracking-wider border-r border-gray-100 last:border-r-0">${dName.replace('周','')} ${d.getDate()}</div>`;
-                }
+                const c = new Date(currentCalDate.year, currentCalDate.month, currentCalDate.day); start = new Date(c.setDate(c.getDate() - (c.getDay() + 6) % 7));
+                title.innerText = `${start.getDate()}日 - ${mN[start.getMonth()]} (本周)`;
+                for(let i=0; i<7; i++) { const d = new Date(start); d.setDate(start.getDate() + i); days.push(d); hr.innerHTML += `<div class="py-2 text-center text-[10px] sm:text-[11px] font-semibold text-gray-400 uppercase border-r border-gray-100 last:border-r-0">${wDs[i].replace('周','')} ${d.getDate()}</div>`; }
             }
-
-            // 网格布局
-            gridBody.className = `flex-1 overflow-y-auto min-h-0 bg-white grid grid-cols-7 ${calView === 'month' ? 'grid-rows-5' : 'grid-rows-1'}`;
-
-            const fmt = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-            const renderStart = daysToRender[0];
-            const renderEnd = daysToRender[daysToRender.length-1];
-
-            let visibleTasks = tasks.filter(t => t.status !== 'done' && t.start <= fmt(renderEnd) && t.end >= fmt(renderStart));
-            visibleTasks.sort((a,b) => {
-                if(a.start !== b.start) return a.start.localeCompare(b.start);
-                return b.end.localeCompare(a.end);
+            gb.className = `flex-1 overflow-y-auto min-h-0 bg-white grid grid-cols-7 ${calView === 'month' ? 'grid-rows-5' : 'grid-rows-1'}`;
+            const renderS = days[0], renderE = days[days.length-1], fmt = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+            
+            const visibleTasks = getFilteredTasks();
+            let vTasks = visibleTasks.filter(t => t.status !== 'done' && t.start <= fmt(renderE) && t.end >= fmt(renderS)).sort((a,b) => a.start.localeCompare(b.start) || b.end.localeCompare(a.end));
+            
+            let slots = {}; vTasks.forEach(t => {
+                let s = new Date(Math.max(new Date(t.start), renderS)), e = new Date(Math.min(new Date(t.end), renderE)), idx = 0;
+                while(true) {
+                    let ok = true; for(let d = new Date(s); d <= e; d.setDate(d.getDate()+1)) if((slots[fmt(d)] || [])[idx]) { ok = false; break; }
+                    if(ok) break; idx++;
+                }
+                for(let d = new Date(s); d <= e; d.setDate(d.getDate()+1)) { let k = fmt(d); if(!slots[k]) slots[k] = []; slots[k][idx] = t.id; }
             });
 
-            let daySlots = {}; 
-            visibleTasks.forEach(task => {
-                let s = new Date(Math.max(new Date(task.start), renderStart));
-                let e = new Date(Math.min(new Date(task.end), renderEnd));
-                
-                let slotIndex = 0;
-                let safety = 0;
-                while(safety < 50) { 
-                    let available = true;
-                    for(let loopD = new Date(s); loopD <= e; loopD.setDate(loopD.getDate()+1)) {
-                        let dStr = fmt(loopD);
-                        if(!daySlots[dStr]) daySlots[dStr] = [];
-                        if(daySlots[dStr][slotIndex]) { available = false; break; }
-                    }
-                    if(available) break;
-                    slotIndex++;
-                    safety++;
-                }
-
-                for(let loopD = new Date(s); loopD <= e; loopD.setDate(loopD.getDate()+1)) {
-                    let dStr = fmt(loopD);
-                    if(!daySlots[dStr]) daySlots[dStr] = [];
-                    daySlots[dStr][slotIndex] = task.id;
-                }
-            });
-
-            daysToRender.forEach(dateObj => {
-                const dStr = fmt(dateObj);
-                const isCurrentMonth = dateObj.getMonth() === currentCalDate.month;
-                const bg = (calView === 'month' && !isCurrentMonth) ? 'bg-gray-50/60' : 'bg-white cal-bg-pattern';
-                const isToday = new Date().toDateString() === dateObj.toDateString();
-
-                const cell = document.createElement('div');
-                cell.className = `border-b border-r border-gray-200 flex flex-col relative group transition-colors ${bg}`;
-                cell.setAttribute('data-date', dStr);
-                
-                cell.ondragover = (e) => handleDragOver(e, dStr);
-                cell.ondragleave = (e) => handleDragLeave(e);
+            days.forEach(dObj => {
+                const dStr = fmt(dObj), isCur = dObj.getMonth() === currentCalDate.month, bg = (calView === 'month' && !isCur) ? 'bg-gray-50/60' : 'bg-white cal-bg-pattern';
+                const cell = document.createElement('div'); cell.className = `border-b border-r border-gray-200 flex flex-col relative group transition-colors ${bg}`; cell.setAttribute('data-date', dStr);
+                cell.ondragover = (e) => { e.preventDefault(); const dur = currentDragState ? currentDragState.duration : 1; document.querySelectorAll('.drag-preview-cell').forEach(el => el.classList.remove('drag-preview-cell')); for(let i=0; i<dur; i++){ let td = new Date(dStr); td.setDate(new Date(dStr).getDate()+i); let c = document.querySelector(`div[data-date="${fmt(td)}"]`); if(c) c.classList.add('drag-preview-cell'); } };
                 cell.ondrop = (e) => handleDrop(e, dStr);
-
-                if(calView === 'month') {
-                    cell.innerHTML = `<span class="text-xs p-1.5 text-right block ${isToday ? 'font-bold text-blue-600' : 'text-gray-400'} select-none z-10 relative pointer-events-none">${dateObj.getDate()}</span>`;
-                } else {
-                    cell.innerHTML = '<div class="h-1"></div>';
+                cell.innerHTML = calView === 'month' ? `<span class="text-xs p-1.5 text-right block ${new Date().toDateString() === dObj.toDateString() ? 'font-bold text-blue-600' : 'text-gray-400'} select-none pointer-events-none">${dObj.getDate()}</span>` : '<div class="h-1"></div>';
+                const tc = document.createElement('div'); tc.className = "flex-1 flex flex-col gap-0.5 w-full px-0.5 pb-1 relative z-20";
+                const daySlots = slots[dStr] || [];
+                for(let i=0; i<daySlots.length; i++) {
+                    const tid = daySlots[i];
+                    if(!tid) { tc.appendChild(document.createElement('div')).className = "h-6 w-full"; continue; }
+                    const t = vTasks.find(x => x.id === tid), isS = t.start === dStr, isE = t.end === dStr, isRowS = dStr === fmt(renderS) || dObj.getDay() === 1;
+                    const color = t.color || getProjectColor(t.project);
+                    let r=0,g=0,b=0; if(color.length===4){r=parseInt(color[1]+color[1],16);g=parseInt(color[2]+color[2],16);b=parseInt(color[3]+color[3],16);}else if(color.length===7){r=parseInt(color.slice(1,3),16);g=parseInt(color.slice(3,5),16);b=parseInt(color.slice(5,7),16);}
+                    const bar = document.createElement('div'); bar.draggable = true; 
+                    bar.className = `cal-task-bar h-6 text-[10px] font-medium flex items-center border select-none cursor-pointer truncate ${isS&&isE?'rounded-md mx-0.5':(isS?'rounded-l-md task-segment-start':(isE?'rounded-r-md task-segment-end':'task-segment-mid'))}`;
+                    bar.style.backgroundColor = `rgba(${r},${g},${b},0.15)`; bar.style.borderColor = `rgba(${r},${g},${b},0.25)`; bar.style.color = 'rgba(23,23,23,0.8)';
+                    bar.setAttribute('data-task-id', t.id); bar.ondragstart = (e) => { e.dataTransfer.setData("text/plain", t.id); currentDragState = { id: t.id, duration: Math.ceil(Math.abs(new Date(t.end) - new Date(t.start)) / 86400000) + 1 }; }; bar.onclick = (e) => { e.stopPropagation(); openModal(t.id); };
+                    const marker = `<div class="w-1 h-full absolute left-0 top-0 opacity-50" style="background-color:${color}"></div>`;
+                    bar.innerHTML = `${isS? marker + `<div class="resize-handle resize-handle-l" onmousedown="initResize(event, ${t.id}, 'start')"></div>`:''}${isS||isRowS?`<span class="truncate px-1.5 pl-2 w-full sticky left-0 pointer-events-none">${t.title}</span>`:'&nbsp;'}${isE?`<div class="resize-handle resize-handle-r" onmousedown="initResize(event, ${t.id}, 'end')"></div>`:''}`;
+                    tc.appendChild(bar);
                 }
+                cell.appendChild(tc); gb.appendChild(cell);
+            });
+            setTimeout(() => TouchDragManager.init(), 100);
+        }
 
-                const taskContainer = document.createElement('div');
-                taskContainer.className = "flex-1 flex flex-col gap-0.5 w-full px-0.5 pb-1 relative z-20";
+        function renderTimelineView() {
+            const pListEl = document.getElementById('timeline-project-list');
+            const hEl = document.getElementById('timeline-header');
+            const bEl = document.getElementById('timeline-body');
+            pListEl.innerHTML = ''; hEl.innerHTML = ''; bEl.innerHTML = '';
+
+            const daysInMonth = new Date(currentCalDate.year, currentCalDate.month + 1, 0).getDate();
+            const days = [];
+            for(let i=1; i<=daysInMonth; i++) days.push(new Date(currentCalDate.year, currentCalDate.month, i));
+            
+            days.forEach(d => {
+                const isWk = d.getDay() === 0 || d.getDay() === 6;
+                hEl.innerHTML += `<div class="timeline-day-col ${isWk?'bg-gray-50':''}">${d.getDate()}</div>`;
+            });
+
+            const rowHeight = isTimelineCompact ? 'h-6' : 'h-10';
+            const barHeight = isTimelineCompact ? 'compact' : 'h-6 top-2';
+
+            const visibleTasks = getFilteredTasks();
+            const flattenedProjs = [];
+            
+            projectList.forEach(p => {
+                flattenedProjs.push({name: p.name, id: p.id, hex: p.hex, isParent: true});
+                if(p.children) p.children.forEach(c => flattenedProjs.push({name: c.name, id: c.id, hex: p.hex, isParent: false}));
+            });
+
+            flattenedProjs.forEach((p, idx) => {
+                const isParent = p.isParent;
+                const pDiv = document.createElement('div');
+                pDiv.className = `flex items-center px-4 ${rowHeight} border-b border-gray-100 ${isParent?'bg-white':'bg-gray-50'} text-xs truncate`;
+                pDiv.innerHTML = `<span class="w-2 h-2 rounded-full mr-2 shrink-0" style="background-color:${p.hex}"></span><span class="${isParent?'font-semibold text-gray-800':'text-gray-500 pl-2'} truncate">${p.name}</span>`;
+                pListEl.appendChild(pDiv);
+
+                const rDiv = document.createElement('div');
+                rDiv.className = `timeline-row ${rowHeight} min-w-max`;
+                rDiv.style.width = (days.length * 40) + 'px';
                 
-                const slots = daySlots[dStr] || [];
-                const maxRow = slots.length;
+                let gridBg = '';
+                days.forEach(d => {
+                     const isWk = d.getDay() === 0 || d.getDay() === 6;
+                     gridBg += `<div class="timeline-day-col ${isWk?'bg-gray-50/50':''} border-r border-gray-100 h-full absolute" style="left:${(d.getDate()-1)*40}px"></div>`;
+                });
+                rDiv.innerHTML = gridBg;
 
-                for(let i=0; i<maxRow; i++) {
-                    const taskId = slots[i];
-                    if(!taskId) {
-                        const spacer = document.createElement('div');
-                        spacer.className = "h-6 w-full"; 
-                        taskContainer.appendChild(spacer);
-                        continue;
-                    }
-
-                    const task = visibleTasks.find(t => t.id === taskId);
-                    const isRealStart = task.start === dStr;
-                    const isRealEnd = task.end === dStr;
-                    const isStartOfRow = dStr === fmt(renderStart) || (dateObj.getDay() === 1); 
-
-                    let colorClass = 'bg-blue-100 border-blue-200 text-blue-800';
-                    if(task.project.includes('开发') || task.project.includes('Dev')) colorClass = 'bg-amber-100 border-amber-200 text-amber-800';
-                    if(task.project.includes('市场') || task.project.includes('Marketing')) colorClass = 'bg-purple-100 border-purple-200 text-purple-800';
-                    if(task.project.includes('设计') || task.project.includes('Design')) colorClass = 'bg-emerald-100 border-emerald-200 text-emerald-800';
-
-                    let shapeClass = '';
-                    if (isRealStart && isRealEnd) shapeClass = 'rounded-md mx-0.5'; 
-                    else if (isRealStart) shapeClass = 'task-segment-start rounded-l-md';
-                    else if (isRealEnd) shapeClass = 'task-segment-end rounded-r-md';
-                    else shapeClass = 'task-segment-mid';
-
-                    const bar = document.createElement('div');
-                    bar.draggable = true;
-                    bar.className = `cal-task-bar h-6 text-[10px] font-medium flex items-center border select-none cursor-pointer truncate ${colorClass} ${shapeClass}`;
-                    bar.setAttribute('data-task-id', task.id);
-                    bar.setAttribute('data-task-start', task.start);
-                    bar.setAttribute('data-task-end', task.end);
+                const pTasks = visibleTasks.filter(t => t.project === p.name && t.status !== 'done');
+                pTasks.forEach(t => {
+                    const start = new Date(t.start);
+                    const end = new Date(t.end);
+                    const mStart = days[0];
+                    const mEnd = days[days.length-1];
                     
-                    bar.ondragstart = (e) => dragStartCalendar(e, task);
-                    bar.onclick = (e) => { e.stopPropagation(); openModal(task.id); };
+                    if (start <= mEnd && end >= mStart) {
+                        const rS = start < mStart ? mStart : start;
+                        const rE = end > mEnd ? mEnd : end;
+                        
+                        const startDay = rS.getDate();
+                        const dur = Math.ceil((rE - rS) / (1000 * 60 * 60 * 24)) + 1;
+                        
+                        const left = (startDay - 1) * 40;
+                        const width = dur * 40 - 2; 
 
-                    const leftHandle = isRealStart ? `<div class="resize-handle resize-handle-l" onmousedown="initResize(event, ${task.id}, 'start')"></div>` : '';
-                    const rightHandle = isRealEnd ? `<div class="resize-handle resize-handle-r" onmousedown="initResize(event, ${task.id}, 'end')"></div>` : '';
-                    
-                    let content = '';
-                    if(isRealStart || isStartOfRow) {
-                        content = `<span class="truncate px-1.5 w-full sticky left-0 pointer-events-none">${task.title}</span>`;
-                    } else {
-                        content = `&nbsp;`;
+                        let r=0,g=0,b=0; let hex = t.color || p.hex;
+                        if(hex.length===4){r=parseInt(hex[1]+hex[1],16);g=parseInt(hex[2]+hex[2],16);b=parseInt(hex[3]+hex[3],16);}else if(hex.length===7){r=parseInt(hex.slice(1,3),16);g=parseInt(hex.slice(3,5),16);b=parseInt(hex.slice(5,7),16);}
+                        
+                        const bar = document.createElement('div');
+                        bar.className = `timeline-bar ${barHeight} cursor-pointer z-10 hover:z-20`;
+                        bar.style.left = (left + 1) + 'px';
+                        bar.style.width = width + 'px';
+                        bar.style.backgroundColor = `rgba(${r},${g},${b},${isTimelineCompact ? 0.8 : 0.2})`;
+                        bar.style.border = isTimelineCompact ? 'none' : `1px solid rgba(${r},${g},${b},0.3)`;
+                        bar.style.color = isTimelineCompact ? 'transparent' : '#1f2937';
+                        
+                        if(!isTimelineCompact) bar.innerText = t.title;
+                        bar.title = `${t.title} (${t.start} - ${t.end})`;
+                        bar.onclick = () => openModal(t.id);
+                        
+                        rDiv.appendChild(bar);
                     }
-
-                    bar.innerHTML = leftHandle + content + rightHandle;
-                    taskContainer.appendChild(bar);
-                }
-
-                cell.appendChild(taskContainer);
-                gridBody.appendChild(cell);
+                });
+                bEl.appendChild(rDiv);
             });
             
-            // 重要：日历重新渲染后，需要重新绑定触摸事件
-            setTimeout(() => { TouchDragManager.init(); }, 100);
+            const scrollArea = document.getElementById('timeline-scroll-area');
+            const pList = document.getElementById('timeline-project-list');
+            scrollArea.onscroll = (e) => {
+                pList.scrollTop = e.target.scrollTop;
+            };
         }
 
-        // --- 统计逻辑 ---
-        function setStatsPeriod(period) {
-            statsPeriod = period;
-            const startInput = document.getElementById('stats-start-date');
-            const endInput = document.getElementById('stats-end-date');
-            const today = new Date();
-            
-            if(period === 'today') {
-                const t = fmtDate(today);
-                startInput.value = t;
-                endInput.value = t;
-            } else if (period === 'week') {
-                const d = new Date(today);
-                d.setDate(today.getDate() - 6);
-                startInput.value = fmtDate(d);
-                endInput.value = fmtDate(today);
-            } else if (period === 'month') {
-                const first = new Date(today.getFullYear(), today.getMonth(), 1);
-                const last = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-                startInput.value = fmtDate(first);
-                endInput.value = fmtDate(last);
-            }
-
-            updateStatsButtonState();
+        function setStatsPeriod(p) {
+            statsPeriod = p; const s = document.getElementById('stats-start-date'), e = document.getElementById('stats-end-date'), t = new Date();
+            if(p === 'today') { s.value = e.value = fmtDate(t); } 
+            else if (p === 'week') { const d = new Date(t); d.setDate(t.getDate() - 6); s.value = fmtDate(d); e.value = fmtDate(t); } 
+            else if (p === 'month') { s.value = fmtDate(new Date(t.getFullYear(), t.getMonth(), 1)); e.value = fmtDate(new Date(t.getFullYear(), t.getMonth() + 1, 0)); }
+            ['today', 'week', 'month'].forEach(k => { const b = document.getElementById(`stats-btn-${k}`); b.className = k === p ? 'px-3 py-1 text-xs font-medium rounded-md transition-all whitespace-nowrap bg-gray-100 text-gray-900 shadow-sm' : 'px-3 py-1 text-xs font-medium rounded-md transition-all whitespace-nowrap text-gray-500'; });
             renderStats();
         }
+        function updateStatsFromInputs() { statsPeriod = 'custom'; ['today', 'week', 'month'].forEach(k => document.getElementById(`stats-btn-${k}`).className = 'px-3 py-1 text-xs font-medium rounded-md transition-all whitespace-nowrap text-gray-500'); renderStats(); }
         
-        function updateStatsFromInputs() {
-            statsPeriod = 'custom';
-            updateStatsButtonState();
-            renderStats();
-        }
-
-        function updateStatsButtonState() {
-            ['today', 'week', 'month'].forEach(p => {
-                const btn = document.getElementById(`stats-btn-${p}`);
-                if(p === statsPeriod) {
-                    btn.classList.add('bg-gray-100', 'text-gray-900', 'shadow-sm');
-                    btn.classList.remove('text-gray-500');
-                } else {
-                    btn.classList.remove('bg-gray-100', 'text-gray-900', 'shadow-sm');
-                    btn.classList.add('text-gray-500');
-                }
-            });
-        }
-
         function renderStats() {
-            const listContainer = document.getElementById('stats-project-list');
-            const pieChart = document.getElementById('stats-pie-chart');
-            const sVal = document.getElementById('stats-start-date').value;
-            const eVal = document.getElementById('stats-end-date').value;
-            
-            listContainer.innerHTML = '';
-
-            if(!sVal || !eVal) return; 
-
-            const startDate = new Date(sVal);
-            const endDate = new Date(eVal);
-
-            let projectTotals = {};
-            let globalTotalDays = 0;
-            let activeTasksInPeriod = 0;
-            
-            projectList.forEach(p => {
-                projectTotals[p.name] = 0;
-                if(p.children) p.children.forEach(c => projectTotals[c.name] = 0);
+            const list = document.getElementById('stats-project-list'), pie = document.getElementById('stats-pie-chart'), sVal = document.getElementById('stats-start-date').value, eVal = document.getElementById('stats-end-date').value;
+            list.innerHTML = ''; if(!sVal || !eVal) return;
+            const sD = new Date(sVal), eD = new Date(eVal);
+            let totals = {}, allDays = 0, count = 0; projectList.forEach(p => { totals[p.name] = 0; (p.children||[]).forEach(c => totals[c.name] = 0); });
+            const visibleTasks = getFilteredTasks();
+            visibleTasks.forEach(t => {
+                const start = new Date(Math.max(sD, new Date(t.start))), end = new Date(Math.min(eD, new Date(t.end)));
+                if (start <= end) { const d = Math.ceil((end - start) / 86400000) + 1; totals[t.project] = (totals[t.project]||0) + d; allDays += d; count++; }
             });
-
-            tasks.forEach(t => {
-                const tS = new Date(t.start);
-                const tE = new Date(t.end);
-                const overlapStart = new Date(Math.max(startDate, tS));
-                const overlapEnd = new Date(Math.min(endDate, tE));
-                
-                if (overlapStart <= overlapEnd) {
-                    const days = Math.ceil((overlapEnd - overlapStart) / (1000 * 60 * 60 * 24)) + 1;
-                    if (!projectTotals[t.project]) projectTotals[t.project] = 0;
-                    projectTotals[t.project] += days;
-                    globalTotalDays += days;
-                    activeTasksInPeriod++;
-                }
-            });
-
-            document.getElementById('stat-project-count').innerText = Object.values(projectTotals).filter(v => v > 0).length;
-            document.getElementById('stat-total-days').innerText = globalTotalDays;
-            document.getElementById('stat-task-count').innerText = activeTasksInPeriod;
-            document.getElementById('pie-center-label').innerText = globalTotalDays + '天';
-
-            const data = [];
-            projectList.forEach(p => {
-                if(projectTotals[p.name] > 0) data.push({ name: p.name, value: projectTotals[p.name], color: p.hex });
-                if(p.children) {
-                    p.children.forEach(c => {
-                         if(projectTotals[c.name] > 0) data.push({ name: c.name, value: projectTotals[c.name], color: p.hex });
-                    });
-                }
-            });
-            
-            data.sort((a,b) => b.value - a.value);
-
-            if(globalTotalDays === 0) {
-                 listContainer.innerHTML = '<div class="text-sm text-gray-400 py-4">此期间无活动。</div>';
-                 pieChart.style.background = '#f4f4f5';
-            } else {
-                let gradientStr = [];
-                let currentDeg = 0;
-                data.forEach(item => {
-                    const pct = (item.value / globalTotalDays) * 100;
-                    const deg = (item.value / globalTotalDays) * 360;
-                    gradientStr.push(`${item.color} ${currentDeg}deg ${currentDeg + deg}deg`);
-                    currentDeg += deg;
-                    const row = document.createElement('div');
-                    row.className = 'flex items-center group';
-                    row.innerHTML = `
-                        <div class="flex-none w-28 sm:w-32 md:w-40">
-                            <div class="flex items-center gap-2">
-                                <span class="w-2.5 h-2.5 rounded-full" style="background-color: ${item.color}"></span>
-                                <span class="text-sm font-medium text-gray-700 truncate">${item.name}</span>
-                            </div>
-                        </div>
-                        <div class="flex-1 mx-2 sm:mx-4">
-                            <div class="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-                                <div class="h-full rounded-full transition-all duration-500" style="width: ${pct}%; background-color: ${item.color}"></div>
-                            </div>
-                        </div>
-                        <div class="flex-none w-16 text-right">
-                             <span class="text-sm font-semibold text-gray-900">${item.value}天</span>
-                        </div>
-                    `;
-                    listContainer.appendChild(row);
+            document.getElementById('stat-project-count').innerText = Object.values(totals).filter(v => v > 0).length; document.getElementById('stat-total-days').innerText = allDays; document.getElementById('stat-task-count').innerText = count; document.getElementById('pie-center-label').innerText = allDays + '天';
+            let data = []; projectList.forEach(p => { if(totals[p.name]>0) data.push({name:p.name, v:totals[p.name], c:p.hex}); (p.children||[]).forEach(c => { if(totals[c.name]>0) data.push({name:c.name, v:totals[c.name], c:p.hex}); }); });
+            data.sort((a,b) => b.v - a.v);
+            if(allDays === 0) { list.innerHTML = '<div class="text-sm text-gray-400 py-4">无活动</div>'; pie.style.background = '#f4f4f5'; } 
+            else {
+                let deg = 0, grads = [];
+                data.forEach(d => {
+                    const pct = d.v/allDays, endDeg = pct*360; grads.push(`${d.c} ${deg}deg ${deg+endDeg}deg`); deg += endDeg;
+                    list.innerHTML += `<div class="flex items-center group"><div class="flex-none w-28 sm:w-32 md:w-40"><div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full" style="background-color: ${d.c}"></span><span class="text-sm font-medium text-gray-700 truncate">${d.name}</span></div></div><div class="flex-1 mx-2 sm:mx-4"><div class="h-2 w-full bg-gray-100 rounded-full overflow-hidden"><div class="h-full rounded-full" style="width: ${pct*100}%; background-color: ${d.c}"></div></div></div><div class="flex-none w-16 text-right"><span class="text-sm font-semibold text-gray-900">${d.v}天</span></div></div>`;
                 });
-                pieChart.style.background = `conic-gradient(${gradientStr.join(', ')})`;
+                pie.style.background = `conic-gradient(${grads.join(', ')})`;
             }
         }
-        
-        // --- 拖拽与调整大小逻辑 (PC) ---
-        let currentDragState = null; 
-        function dragStartKanban(e, id) { e.dataTransfer.setData("text/plain", id); e.dataTransfer.effectAllowed = "move"; }
-        function dragStartCalendar(e, task) {
-            e.dataTransfer.setData("text/plain", task.id);
-            const d1 = new Date(task.start); const d2 = new Date(task.end);
-            currentDragState = { id: task.id, title: task.title, duration: Math.ceil(Math.abs(d2 - d1) / (86400000)) + 1 };
-        }
+
+        let currentDragState = null;
         function allowDrop(e) { e.preventDefault(); }
-        function drop(e, status) {
-            e.preventDefault();
-            const id = parseInt(e.dataTransfer.getData("text/plain"));
-            const task = tasks.find(t => t.id === id);
-            if(task && task.status !== status) { task.status = status; saveTasks(); renderAllViews(); } // 步骤三：修改后调用保存
-        }
-        function handleDragOver(e, dateStr) {
-            e.preventDefault();
-            const duration = currentDragState ? currentDragState.duration : 1;
-            document.querySelectorAll('.drag-preview-cell').forEach(el => el.classList.remove('drag-preview-cell'));
-            const startDate = new Date(dateStr);
-            const fmt = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-            for(let i = 0; i < duration; i++) {
-                let targetD = new Date(startDate); targetD.setDate(startDate.getDate() + i);
-                const cell = document.querySelector(`div[data-date="${fmt(targetD)}"]`);
-                if(cell) cell.classList.add('drag-preview-cell');
-            }
-        }
-        function handleDragLeave(e) {}
-        function handleDrop(e, dateStr) {
-            e.preventDefault();
-            document.querySelectorAll('.drag-preview-cell').forEach(el => el.classList.remove('drag-preview-cell'));
-            currentDragState = null;
-            const id = parseInt(e.dataTransfer.getData("text/plain"));
-            const task = tasks.find(t => t.id === id);
-            if(task) {
-                const d1 = new Date(task.start); const d2 = new Date(task.end);
-                const diffDays = Math.ceil(Math.abs(d2 - d1) / 86400000); 
-                task.start = dateStr;
-                const newEnd = new Date(dateStr); newEnd.setDate(newEnd.getDate() + diffDays);
-                task.end = fmtDate(newEnd);
-                saveTasks(); renderAllViews(); // 步骤三：修改后调用保存
-            }
+        function drop(e, s) { e.preventDefault(); const t = tasks.find(x => x.id === parseInt(e.dataTransfer.getData("text/plain"))); if(t && t.status !== s) { t.status = s; saveTasks(); renderAllViews(); } }
+        function handleDrop(e, dStr) {
+            e.preventDefault(); document.querySelectorAll('.drag-preview-cell').forEach(el => el.classList.remove('drag-preview-cell'));
+            const t = tasks.find(x => x.id === parseInt(e.dataTransfer.getData("text/plain"))); currentDragState = null;
+            if(t) { const diff = Math.ceil(Math.abs(new Date(t.end) - new Date(t.start)) / 86400000); t.start = dStr; const ne = new Date(dStr); ne.setDate(ne.getDate() + diff); t.end = fmtDate(ne); saveTasks(); renderAllViews(); }
         }
         
-        let resizingState = null;
-        function initResize(e, taskId, type) {
-            e.preventDefault(); e.stopPropagation();
-            resizingState = { taskId, type };
-            document.body.style.cursor = 'col-resize'; document.body.classList.add('select-none-all');
-            document.addEventListener('mousemove', handleResizeMove); document.addEventListener('mouseup', handleResizeUp);
-            // 手机端兼容
-            document.addEventListener('touchmove', handleResizeMove); document.addEventListener('touchend', handleResizeUp);
-        }
-        function handleResizeMove(e) {
-            if(!resizingState) return;
-            const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
-            const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
-            
-            const element = document.elementFromPoint(clientX, clientY);
-            if(!element) return;
-            const dateCell = element.closest('div[data-date]');
-            
-            if(dateCell) {
-                const newDate = dateCell.getAttribute('data-date');
-                const task = tasks.find(t => t.id === resizingState.taskId);
-                if(resizingState.type === 'start') { if(newDate <= task.end && task.start !== newDate) { task.start = newDate; renderCalendar(); } } 
-                else { if(newDate >= task.start && task.end !== newDate) { task.end = newDate; renderCalendar(); } }
-            }
-        }
-        function handleResizeUp(e) {
-            resizingState = null; document.body.style.cursor = ''; document.body.classList.remove('select-none-all');
-            document.removeEventListener('mousemove', handleResizeMove); document.removeEventListener('mouseup', handleResizeUp);
-            document.removeEventListener('touchmove', handleResizeMove); document.removeEventListener('touchend', handleResizeUp);
-            saveTasks(); // 步骤三：修改后调用保存
-        }
+        let rState = null;
+        function initResize(e, tid, type) { e.preventDefault(); e.stopPropagation(); rState = { tid, type }; document.body.style.cursor = 'col-resize'; document.body.classList.add('select-none-all'); window.addEventListener('mousemove', rsMove); window.addEventListener('mouseup', rsUp); window.addEventListener('touchmove', rsMove); window.addEventListener('touchend', rsUp); }
+        function rsMove(e) { if(!rState) return; const el = document.elementFromPoint(e.type.includes('touch')?e.touches[0].clientX:e.clientX, e.type.includes('touch')?e.touches[0].clientY:e.clientY); const c = el?.closest('div[data-date]'); if(c) { const nd = c.getAttribute('data-date'), t = tasks.find(x => x.id === rState.tid); if(rState.type === 'start') { if(nd <= t.end && t.start !== nd) { t.start = nd; renderCalendar(); } } else { if(nd >= t.start && t.end !== nd) { t.end = nd; renderCalendar(); } } } }
+        function rsUp() { rState = null; document.body.style.cursor = ''; document.body.classList.remove('select-none-all'); window.removeEventListener('mousemove', rsMove); window.removeEventListener('mouseup', rsUp); window.removeEventListener('touchmove', rsMove); window.removeEventListener('touchend', rsUp); saveTasks(); }
 
-        // --- 手机端触摸拖拽管理器 (TouchDragManager) ---
         const TouchDragManager = {
-            activeEl: null,
-            cloneEl: null,
-            startX: 0,
-            startY: 0,
-            initialLeft: 0,
-            initialTop: 0,
-            touchTimer: null,
-            
-            init: function() {
-                // 清理旧事件
-                document.querySelectorAll('.kanban-item, .cal-task-bar').forEach(el => {
-                    el.ontouchstart = null;
-                    el.ontouchmove = null;
-                    el.ontouchend = null;
-                });
-                
-                // 绑定新事件
-                const items = document.querySelectorAll('.kanban-item, .cal-task-bar');
-                items.forEach(el => {
-                    // 防止与内部按钮冲突
-                    if(el.classList.contains('resize-handle')) return;
-                    
-                    el.addEventListener('touchstart', this.handleStart.bind(this), {passive: false});
-                });
-            },
-
-            handleStart: function(e) {
-                // 如果点的是resize handle，不触发拖拽
-                if(e.target.classList.contains('resize-handle')) return;
-                
-                const touch = e.touches[0];
-                this.activeEl = e.currentTarget;
-                this.startX = touch.clientX;
-                this.startY = touch.clientY;
-                
-                // 只有长按或轻微移动后才开始拖拽，允许点击
-                this.touchTimer = setTimeout(() => {
-                    this.startDragging(touch);
-                }, 150);
-                
-                this.activeEl.addEventListener('touchmove', this.handleMove.bind(this), {passive: false});
-                this.activeEl.addEventListener('touchend', this.handleEnd.bind(this));
-            },
-
-            startDragging: function(touch) {
-                if(!this.activeEl) return;
-                
-                // 创建镜像
-                const rect = this.activeEl.getBoundingClientRect();
-                this.cloneEl = this.activeEl.cloneNode(true);
-                this.cloneEl.classList.add('touch-mirror');
-                this.cloneEl.style.width = rect.width + 'px';
-                this.cloneEl.style.setProperty('--mirror-width', rect.width + 'px');
-                this.cloneEl.style.left = rect.left + 'px';
-                this.cloneEl.style.top = rect.top + 'px';
-                
-                document.body.appendChild(this.cloneEl);
-                this.activeEl.classList.add('opacity-50');
-                
-                // 记录偏移
-                this.initialLeft = rect.left;
-                this.initialTop = rect.top;
-            },
-
-            handleMove: function(e) {
-                // 允许轻微抖动，不立即取消
-                const touch = e.touches[0];
-                const moveDist = Math.hypot(touch.clientX - this.startX, touch.clientY - this.startY);
-                
-                if (moveDist > 5 && !this.cloneEl) {
-                    clearTimeout(this.touchTimer); // 真的在移动（滚动），取消长按拖拽
-                }
-                
-                if(this.cloneEl) {
-                    e.preventDefault(); // 阻止滚动
-                    const dx = touch.clientX - this.startX;
-                    const dy = touch.clientY - this.startY;
-                    
-                    this.cloneEl.style.transform = `translate(${dx}px, ${dy}px) scale(1.02)`;
-                    
-                    // 看板高亮逻辑
-                    if(currentView === 'projects') {
-                        const targetEl = document.elementFromPoint(touch.clientX, touch.clientY);
-                        const col = targetEl?.closest('.kanban-col');
-                        document.querySelectorAll('.kanban-col').forEach(c => c.classList.remove('bg-gray-100'));
-                        if(col) col.classList.add('bg-gray-100');
-                    }
-                }
-            },
-
-            handleEnd: function(e) {
-                clearTimeout(this.touchTimer);
-                
-                if(this.cloneEl) {
-                    const touch = e.changedTouches[0];
-                    // 暂时隐藏镜像以获取底层元素
-                    this.cloneEl.style.display = 'none';
-                    const targetEl = document.elementFromPoint(touch.clientX, touch.clientY);
-                    this.cloneEl.style.display = 'block';
-                    
-                    if(currentView === 'projects') {
-                        const col = targetEl?.closest('.kanban-col');
-                        if(col) {
-                            const newStatus = col.getAttribute('data-status');
-                            const taskId = parseInt(this.activeEl.getAttribute('data-task-id'));
-                            const task = tasks.find(t => t.id === taskId);
-                            if(task && task.status !== newStatus) {
-                                task.status = newStatus;
-                                saveTasks(); // 步骤三：修改后调用保存
-                            }
-                        }
-                        document.querySelectorAll('.kanban-col').forEach(c => c.classList.remove('bg-gray-100'));
-                    } else if (currentView === 'calendar') {
-                        const cell = targetEl?.closest('div[data-date]');
-                        if(cell) {
-                            const newDateStr = cell.getAttribute('data-date');
-                            const taskId = parseInt(this.activeEl.getAttribute('data-task-id'));
-                            const task = tasks.find(t => t.id === taskId);
-                            if(task) {
-                                const d1 = new Date(task.start); const d2 = new Date(task.end);
-                                const diffDays = Math.ceil(Math.abs(d2 - d1) / 86400000);
-                                task.start = newDateStr;
-                                const newEnd = new Date(newDateStr); newEnd.setDate(newEnd.getDate() + diffDays);
-                                task.end = fmtDate(newEnd);
-                                saveTasks(); // 步骤三：修改后调用保存
-                            }
-                        }
-                    }
-
-                    this.cloneEl.remove();
-                    this.cloneEl = null;
-                    this.activeEl.classList.remove('opacity-50');
-                    renderAllViews();
-                } 
-                
-                if(this.activeEl) {
-                    this.activeEl.removeEventListener('touchmove', this.handleMove);
-                    this.activeEl.removeEventListener('touchend', this.handleEnd);
-                    this.activeEl = null;
-                }
-            }
+            el: null, clone: null, sx: 0, sy: 0, timer: null,
+            init() { document.querySelectorAll('.kanban-item, .cal-task-bar').forEach(el => { if(!el.classList.contains('resize-handle')) el.addEventListener('touchstart', this.start.bind(this), {passive:false}); }); },
+            start(e) { if(e.target.classList.contains('resize-handle')) return; this.el = e.currentTarget; this.sx = e.touches[0].clientX; this.sy = e.touches[0].clientY; this.timer = setTimeout(() => this.drag(e.touches[0]), 150); this.el.addEventListener('touchmove', this.move.bind(this), {passive:false}); this.el.addEventListener('touchend', this.end.bind(this)); },
+            drag(t) { const r = this.el.getBoundingClientRect(); this.clone = this.el.cloneNode(true); this.clone.classList.add('touch-mirror'); this.clone.style.width = r.width + 'px'; this.clone.style.setProperty('--mirror-width', r.width + 'px'); this.clone.style.left = r.left + 'px'; this.clone.style.top = r.top + 'px'; document.body.appendChild(this.clone); this.el.classList.add('opacity-50'); },
+            move(e) { const t = e.touches[0]; if(Math.hypot(t.clientX-this.sx, t.clientY-this.sy)>5 && !this.clone) clearTimeout(this.timer); if(this.clone) { e.preventDefault(); this.clone.style.transform = `translate(${t.clientX-this.sx}px, ${t.clientY-this.sy}px) scale(1.02)`; if(currentView==='projects'){ document.querySelectorAll('.kanban-col').forEach(c => c.classList.remove('bg-gray-100')); const el = document.elementFromPoint(t.clientX, t.clientY)?.closest('.kanban-col'); if(el) el.classList.add('bg-gray-100'); } } },
+            end(e) { clearTimeout(this.timer); if(this.clone) { const t = e.changedTouches[0]; this.clone.style.display='none'; const el = document.elementFromPoint(t.clientX, t.clientY); this.clone.style.display='block'; if(currentView==='projects'){ const c = el?.closest('.kanban-col'); if(c) { const task = tasks.find(x => x.id == this.el.getAttribute('data-task-id')); if(task && task.status !== c.dataset.status) { task.status = c.dataset.status; saveTasks(); } } document.querySelectorAll('.kanban-col').forEach(c => c.classList.remove('bg-gray-100')); } else if(currentView==='calendar'){ const c = el?.closest('div[data-date]'); if(c) { const task = tasks.find(x => x.id == this.el.getAttribute('data-task-id')); if(task) { const d = Math.ceil(Math.abs(new Date(task.end)-new Date(task.start))/86400000); task.start = c.getAttribute('data-date'); const ne = new Date(task.start); ne.setDate(ne.getDate()+d); task.end = fmtDate(ne); saveTasks(); } } } this.clone.remove(); this.clone=null; this.el.classList.remove('opacity-50'); renderAllViews(); } this.el.removeEventListener('touchmove', this.move); this.el.removeEventListener('touchend', this.end); this.el = null; }
         };
 
-        // --- 辅助函数 ---
         function fmtDate(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
-        function formatDateDisplay(dateStr) { const [y, m, d] = dateStr.split('-').map(Number); return new Date(y, m-1, d).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' }); }
+        function formatDateDisplay(s) { const [y, m, d] = s.split('-').map(Number); return new Date(y, m-1, d).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' }); }
 
-        // --- 项目管理逻辑 ---
         function renderProjectOptions() {
-            const select = document.getElementById('input-project');
-            if(!select) return;
-            const currentVal = select.value;
-            select.innerHTML = '';
-            
-            projectList.forEach(p => {
-                if(p.children && p.children.length > 0) {
-                    const group = document.createElement('optgroup');
-                    group.label = p.name;
-                    const parentOpt = document.createElement('option');
-                    parentOpt.value = p.name; parentOpt.innerText = p.name; select.appendChild(parentOpt);
-                   p.children.forEach(c => {
-                       const opt = document.createElement('option');
-                       opt.value = c.name; opt.innerHTML = `&nbsp;&nbsp;&nbsp;${c.name}`; select.appendChild(opt);
-                   });
-                } else {
-                    const opt = document.createElement('option');
-                    opt.value = p.name; opt.innerText = p.name; select.appendChild(opt);
-                }
-            });
-            if(currentVal) select.value = currentVal; 
-            else if (projectList.length > 0) select.value = projectList[0].name;
+            const s = document.getElementById('input-project'); s.innerHTML = '';
+            projectList.forEach(p => { if(p.children?.length) { const g = document.createElement('optgroup'); g.label = p.name; g.appendChild(new Option(p.name, p.name)); p.children.forEach(c => g.appendChild(new Option(`   ${c.name}`, c.name))); s.appendChild(g); } else s.appendChild(new Option(p.name, p.name)); });
         }
-
         function toggleProjectMenu() { document.getElementById('project-menu').classList.toggle('hidden'); }
-        document.addEventListener('click', function(e) { const trigger = e.target.closest('button[onclick="toggleProjectMenu()"]'); const menu = document.getElementById('project-menu'); if (!trigger && !menu.contains(e.target)) menu.classList.add('hidden'); });
-        
-        function enableProjectEditMode() { 
-            document.getElementById('project-menu').classList.add('hidden'); 
-            document.getElementById('project-view-mode').classList.add('hidden'); 
-            document.getElementById('project-edit-mode').classList.remove('hidden'); 
-            renderProjectEditorList(); 
-        }
-        
-        function closeProjectEditMode() { 
-            document.getElementById('project-edit-mode').classList.add('hidden'); 
-            document.getElementById('project-view-mode').classList.remove('hidden'); 
-            renderProjectOptions(); 
-            renderAllViews(); 
-        }
-
-        // --- 层级编辑器渲染 ---
-        function renderProjectEditorList() {
-            const listEl = document.getElementById('project-editor-list'); 
-            listEl.innerHTML = '';
-            
-            projectList.forEach((p, index) => {
-                const parentRow = document.createElement('div');
-                parentRow.className = 'group pt-2 pb-1 border-b border-gray-50 last:border-0';
-                
-                const chevronIcon = p.expanded ? 'chevron-down' : 'chevron-right';
-                
-                parentRow.innerHTML = `
-                    <div class="flex items-center gap-2 mb-1">
-                        <button onclick="toggleExpand('${p.id}')" class="text-gray-400 p-2 active:bg-gray-100 rounded">
-                            <i data-lucide="${chevronIcon}" class="w-4 h-4"></i>
-                        </button>
-                        <div class="flex-1 relative group/input">
-                            <input type="text" value="${p.name}" onchange="updateProjectName('${p.id}', null, this.value)" 
-                                   class="w-full text-sm bg-gray-50 border border-transparent focus:border-gray-400 rounded px-2 py-1.5 outline-none transition-all font-medium text-gray-800">
-                             <button onclick="addChildToParent('${p.id}')" class="absolute right-1 top-1.5 text-gray-400 p-1 active:text-gray-900">
-                                <i data-lucide="plus" class="w-4 h-4"></i>
-                             </button>
-                        </div>
-                        <button type="button" onclick="removeProjectParent('${p.id}')" class="text-gray-300 hover:text-red-500 active:text-red-500 p-2.5 rounded-md transition-colors">
-                            <i data-lucide="trash-2" class="w-4 h-4"></i>
-                        </button>
-                    </div>
-                `;
-                listEl.appendChild(parentRow);
-
-                if(p.expanded) { 
-                     const childrenContainer = document.createElement('div');
-                     childrenContainer.className = 'ml-8 border-l border-gray-100 pl-3 space-y-2 mb-2';
-                     
-                     if (p.children && p.children.length > 0) {
-                         p.children.forEach(c => {
-                             const childRow = document.createElement('div');
-                             childRow.className = 'flex items-center gap-2';
-                             childRow.innerHTML = `
-                                <input type="text" value="${c.name}" onchange="updateProjectName('${p.id}', '${c.id}', this.value)" 
-                                       class="flex-1 text-sm bg-white border border-gray-100 focus:border-gray-400 rounded px-2 py-1.5 outline-none transition-all text-gray-600">
-                                <button type="button" onclick="removeChildItem('${p.id}', '${c.id}')" class="text-gray-200 hover:text-red-500 active:text-red-500 p-2 rounded-md transition-colors">
-                                    <i data-lucide="x" class="w-4 h-4"></i>
-                                </button>
-                             `;
-                             childrenContainer.appendChild(childRow);
-                         });
-                     }
-                     listEl.appendChild(childrenContainer);
-                }
+        document.addEventListener('click', e => { if (!e.target.closest('button[onclick="toggleProjectMenu()"]') && !document.getElementById('project-menu').contains(e.target)) document.getElementById('project-menu').classList.add('hidden'); });
+        function enableProjectEditMode() { document.getElementById('project-menu').classList.add('hidden'); document.getElementById('project-view-mode').classList.add('hidden'); document.getElementById('project-edit-mode').classList.remove('hidden'); renderPEList(); }
+        function closeProjectEditMode() { document.getElementById('project-edit-mode').classList.add('hidden'); document.getElementById('project-view-mode').classList.remove('hidden'); renderProjectOptions(); renderAllViews(); renderFilterListContent(); }
+        function renderPEList() {
+            const l = document.getElementById('project-editor-list'); l.innerHTML = '';
+            projectList.forEach(p => {
+                l.innerHTML += `<div class="group pt-2 pb-1 border-b border-gray-50"><div class="flex items-center gap-2 mb-1"><button onclick="toggleExpand('${p.id}')" class="text-gray-400 p-2"><i data-lucide="${p.expanded?'chevron-down':'chevron-right'}" class="w-4 h-4"></i></button><div class="flex-1 flex items-center gap-2"><input type="color" value="${p.hex}" onchange="updateProjectColor('${p.id}', this.value)" class="w-6 h-6 shrink-0"><input type="text" value="${p.name}" onchange="updateProjectName('${p.id}',null,this.value)" class="w-full text-sm bg-gray-50 border-transparent focus:border-gray-400 rounded px-2 py-1.5 outline-none font-medium text-gray-800"></div><button onclick="addChildToParent('${p.id}')" class="text-gray-400 p-1 hover:text-blue-500"><i data-lucide="plus" class="w-4 h-4"></i></button><button onclick="removeProjectParent('${p.id}')" class="text-gray-300 hover:text-red-500 p-2.5"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div>${p.expanded ? `<div class="ml-8 border-l border-gray-100 pl-3 space-y-2 mb-2">${(p.children||[]).map(c => `<div class="flex items-center gap-2"><input type="text" value="${c.name}" onchange="updateProjectName('${p.id}','${c.id}',this.value)" class="flex-1 text-sm bg-white border border-gray-100 focus:border-gray-400 rounded px-2 py-1.5 outline-none text-gray-600"><button onclick="removeChildItem('${p.id}','${c.id}')" class="text-gray-200 hover:text-red-500 p-2"><i data-lucide="x" class="w-4 h-4"></i></button></div>`).join('')}</div>` : ''}</div>`;
             });
             if(window.lucide) lucide.createIcons();
         }
+        function toggleExpand(id) { const p = projectList.find(x => x.id === id); if(p) { p.expanded = !p.expanded; renderPEList(); } }
+        function addProjectParent() { projectList.push({ id: 'p'+Date.now(), name: '新项目', hex: '#6b7280', children: [], expanded: true }); saveTasks(); renderPEList(); }
+        function addChildToParent(id) { const p = projectList.find(x => x.id === id); if(p) { p.expanded = true; if(!p.children) p.children = []; p.children.push({ id: 'c'+Date.now(), name: '新子项' }); saveTasks(); renderPEList(); } }
+        function removeProjectParent(id) { setTimeout(() => { if(confirm('删除此项目组？')) { projectList = projectList.filter(p => p.id !== id); saveTasks(); renderPEList(); } }, 10); }
+        function removeChildItem(pId, cId) { const p = projectList.find(x => x.id === pId); if(p) { p.children = p.children.filter(c => c.id !== cId); saveTasks(); renderPEList(); } }
+        function updateProjectName(pId, cId, val) { const p = projectList.find(x => x.id === pId); if(!p) return; const t = cId ? p.children.find(x => x.id === cId) : p; const old = t.name; t.name = val; tasks.forEach(task => { if(task.project === old) task.project = val; }); saveTasks(); }
+        function updateProjectColor(pId, val) { const p = projectList.find(x => x.id === pId); if(p) { p.hex = val; saveTasks(); renderPEList(); } }
 
-        function toggleExpand(id) {
-            const p = projectList.find(x => x.id === id);
-            if(p) { p.expanded = !p.expanded; renderProjectEditorList(); }
-        }
-        function addProjectParent() {
-            projectList.push({ id: 'p' + Date.now(), name: '', color: 'bg-gray-300', hex: '#d1d5db', children: [], expanded: true });
-            saveTasks(); renderProjectEditorList(); // 步骤三：修改后调用保存
-        }
-        function addChildToParent(pId) {
-            const p = projectList.find(x => x.id === pId);
-            if(p) {
-                p.expanded = true; if(!p.children) p.children = [];
-                p.children.push({ id: 'c' + Date.now(), name: '' });
-                saveTasks(); renderProjectEditorList(); // 步骤三：修改后调用保存
-            }
-        }
-        function removeProjectParent(id) {
-            // 手机端 confirm 可能会阻塞 UI 线程，导致点击无反应，使用 setTimeout 绕过
-            setTimeout(() => {
-                if(confirm('确定要删除此项目组及其所有选项吗？')) {
-                    projectList = projectList.filter(p => p.id !== id);
-                    saveTasks(); renderProjectEditorList(); // 步骤三：修改后调用保存
-                }
-            }, 10);
-        }
-        function removeChildItem(pId, cId) {
-             const p = projectList.find(x => x.id === pId);
-             if(p && p.children) {
-                 // 立即删除，无需确认
-                 p.children = p.children.filter(c => c.id !== cId);
-                 saveTasks(); renderProjectEditorList(); // 步骤三：修改后调用保存
-             }
-        }
-        function updateProjectName(pId, cId, val) {
-            const p = projectList.find(x => x.id === pId); if(!p) return;
-            if(cId) {
-                const c = p.children.find(x => x.id === cId);
-                if(c) { const oldName = c.name; c.name = val; tasks.forEach(t => { if(t.project === oldName) t.project = val; }); }
-            } else {
-                const oldName = p.name; p.name = val; tasks.forEach(t => { if(t.project === oldName) t.project = val; });
-            }
-            saveTasks(); // 步骤三：修改后调用保存
-        }
-
-
-        // --- 模态框逻辑 ---
-        function openModal(id = null) {
-            const backdrop = document.getElementById('modal-backdrop'); const panel = document.getElementById('modal-panel');
-            document.getElementById('project-edit-mode').classList.add('hidden'); document.getElementById('project-view-mode').classList.remove('hidden'); renderProjectOptions();
-            backdrop.classList.remove('hidden'); void backdrop.offsetWidth; backdrop.classList.remove('opacity-0'); panel.classList.remove('translate-x-full');
+        let modalCloseTimer = null;
+        function openModal(id) {
+            if(modalCloseTimer) { clearTimeout(modalCloseTimer); modalCloseTimer = null; }
+            const importModal = document.getElementById('modal-import');
+            const importContent = document.getElementById('import-modal-content');
+            if(!importModal.classList.contains('hidden')) { importModal.classList.add('hidden'); importContent.classList.remove('scale-100', 'opacity-100'); importContent.classList.add('scale-95', 'opacity-0'); }
+            const b = document.getElementById('modal-backdrop');
+            const p = document.getElementById('modal-panel');
+            document.getElementById('project-edit-mode').classList.add('hidden'); 
+            document.getElementById('project-view-mode').classList.remove('hidden'); 
+            renderProjectOptions();
+            b.classList.remove('hidden'); void b.offsetWidth; b.classList.remove('opacity-0'); p.classList.remove('translate-x-full');
             
-            const deleteBtn = document.getElementById('btn-delete-task');
-
             if (id) {
-                const task = tasks.find(t => t.id === id); 
-                document.getElementById('edit-task-id').value = id; 
-                document.getElementById('modal-title').innerText = "任务详情"; 
-                document.getElementById('input-title').value = task.title;
-                deleteBtn.classList.remove('hidden');
-                renderProjectOptions();
-                document.getElementById('input-project').value = task.project;
-                document.getElementById('input-desc').value = task.desc || ''; document.getElementById('input-start').value = task.start; document.getElementById('input-end').value = task.end;
-                const radios = document.getElementsByName('status'); radios.forEach(r => { if(r.value === task.status) r.checked = true; });
+                const t = tasks.find(x => x.id === id); document.getElementById('edit-task-id').value = id; document.getElementById('modal-title').innerText = "任务详情"; document.getElementById('btn-delete-task').classList.remove('hidden');
+                document.getElementById('input-title').value = t.title; document.getElementById('input-project').value = t.project; document.getElementById('input-desc').value = t.desc||''; document.getElementById('input-start').value = t.start; document.getElementById('input-end').value = t.end;
+                document.getElementById('input-color').value = t.color || getProjectColor(t.project);
+                document.getElementsByName('status').forEach(r => r.checked = r.value === t.status);
             } else {
-                document.getElementById('edit-task-id').value = ''; 
-                document.getElementById('modal-title').innerText = "新建任务"; 
-                document.getElementById('input-title').value = ''; 
-                document.getElementById('input-desc').value = '';
-                deleteBtn.classList.add('hidden');
-                const today = fmtDate(new Date()); document.getElementById('input-start').value = today; document.getElementById('input-end').value = today;
-                document.getElementsByName('status')[0].checked = true; renderProjectOptions();
+                document.getElementById('edit-task-id').value = ''; document.getElementById('modal-title').innerText = "新建任务"; document.getElementById('btn-delete-task').classList.add('hidden');
+                document.getElementById('input-title').value = ''; document.getElementById('input-desc').value = ''; 
+                const d = fmtDate(new Date()); document.getElementById('input-start').value = d; document.getElementById('input-end').value = d; document.getElementsByName('status')[0].checked = true;
+                const defaultProj = document.getElementById('input-project').value;
+                document.getElementById('input-color').value = getProjectColor(defaultProj);
                 setTimeout(() => document.getElementById('input-title').focus(), 100);
             }
         }
-        function closeModal() { const backdrop = document.getElementById('modal-backdrop'); const panel = document.getElementById('modal-panel'); backdrop.classList.add('opacity-0'); panel.classList.add('translate-x-full'); setTimeout(() => { backdrop.classList.add('hidden'); }, 300); }
-        function saveTask() {
-            const idStr = document.getElementById('edit-task-id').value; const title = document.getElementById('input-title').value; const project = document.getElementById('input-project').value; const desc = document.getElementById('input-desc').value; const start = document.getElementById('input-start').value; const end = document.getElementById('input-end').value; let status = 'todo'; document.getElementsByName('status').forEach(r => { if(r.checked) status = r.value; });
-            if (!title) return;
-            if (idStr) { const task = tasks.find(t => t.id === parseInt(idStr)); Object.assign(task, { title, project, desc, start, end, status }); } 
-            else { tasks.unshift({ id: Date.now(), title, project, desc, start, end, status }); }
-            saveTasks(); closeModal(); renderAllViews(); // 步骤三：修改后调用保存
+        function handleProjectChange(pName) { document.getElementById('input-color').value = getProjectColor(pName); }
+        function closeAllModals() { closeModal(); closeImportModal(); }
+        function closeModal() {
+            const b = document.getElementById('modal-backdrop'); const p = document.getElementById('modal-panel'); p.classList.add('translate-x-full'); 
+            if(document.getElementById('modal-import').classList.contains('hidden')) { b.classList.add('opacity-0'); modalCloseTimer = setTimeout(() => { b.classList.add('hidden'); }, 300); }
         }
-        function deleteCurrentTask() { 
-            const idStr = document.getElementById('edit-task-id').value; 
-            // 某些移动浏览器阻塞confirm，用setTimeout保证渲染
-            setTimeout(() => {
-                if(idStr && confirm("您确定要删除此任务吗？")) { 
-                    tasks = tasks.filter(t => t.id !== parseInt(idStr)); 
-                    saveTasks(); // 步骤三：修改后调用保存
-                    closeModal(); 
-                    renderAllViews(); 
-                } 
-            }, 10);
+        function openImportModal() {
+            if(modalCloseTimer) { clearTimeout(modalCloseTimer); modalCloseTimer = null; }
+            document.getElementById('modal-panel').classList.add('translate-x-full');
+            const b = document.getElementById('modal-backdrop'); const m = document.getElementById('modal-import'); const c = document.getElementById('import-modal-content');
+            b.classList.remove('hidden'); void b.offsetWidth; b.classList.remove('opacity-0'); m.classList.remove('hidden');
+            setTimeout(() => { c.classList.remove('scale-95', 'opacity-0'); c.classList.add('scale-100', 'opacity-100'); }, 10);
+            if(window.innerWidth < 768) { const s = document.getElementById('main-sidebar'); if (!s.classList.contains('-translate-x-full')) toggleSidebar(); }
         }
-        function toggleTaskStatus(id) { const task = tasks.find(t => t.id === id); if(task) { task.status = task.status === 'done' ? 'todo' : 'done'; saveTasks(); renderAllViews(); } } // 步骤三：修改后调用保存
-
-        // --- 导出逻辑 ---
-        function triggerDirectExport() {
-            let startVal = document.getElementById('stats-start-date').value;
-            let endVal = document.getElementById('stats-end-date').value;
-            if (!startVal || !endVal) {
-                const today = new Date();
-                const first = new Date(today.getFullYear(), today.getMonth(), 1);
-                const last = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-                startVal = fmtDate(first); endVal = fmtDate(last);
+        function closeImportModal() {
+             const b = document.getElementById('modal-backdrop'); const m = document.getElementById('modal-import'); const c = document.getElementById('import-modal-content');
+             c.classList.remove('scale-100', 'opacity-100'); c.classList.add('scale-95', 'opacity-0');
+             if(document.getElementById('modal-panel').classList.contains('translate-x-full')) { b.classList.add('opacity-0'); modalCloseTimer = setTimeout(() => { m.classList.add('hidden'); b.classList.add('hidden'); document.getElementById('import-json-area').value = ''; }, 200); } else { setTimeout(() => { m.classList.add('hidden'); document.getElementById('import-json-area').value = ''; }, 200); }
+        }
+        function autoSaveTask() {
+            const id = document.getElementById('edit-task-id').value;
+            if(!id) return;
+            const t = tasks.find(x => x.id == id);
+            if(t) {
+                t.title = document.getElementById('input-title').value;
+                t.project = document.getElementById('input-project').value;
+                t.desc = document.getElementById('input-desc').value;
+                t.start = document.getElementById('input-start').value;
+                t.end = document.getElementById('input-end').value;
+                t.color = document.getElementById('input-color').value;
+                const statusEl = document.querySelector('input[name="status"]:checked');
+                if(statusEl) t.status = statusEl.value;
+                saveTasks();
+                renderAllViews();
             }
-            const relevantTasks = tasks.filter(t => t.start <= endVal && t.end >= startVal);
-            let projectGroups = {};
-            relevantTasks.forEach(t => {
-                if(!projectGroups[t.project]) projectGroups[t.project] = { days: 0, tasks: [] };
-                const d1 = new Date(t.start); const d2 = new Date(t.end);
-                const days = Math.ceil(Math.abs(d2 - d1) / (1000 * 60 * 60 * 24)) + 1;
-                projectGroups[t.project].days += days;
-                projectGroups[t.project].tasks.push({ ...t, days });
-            });
-            let md = `📅 **Nexus 项目报告** (${startVal} 至 ${endVal})\n\n`;
-            md += `### 🏗️ 项目负载概览\n| 项目名称 | 任务总数 | 占用总天数 |\n| :--- | :--- | :--- |\n`;
-            Object.keys(projectGroups).forEach(pName => { const group = projectGroups[pName]; md += `| **${pName}** | ${group.tasks.length} | **${group.days}天** |\n`; });
-            md += `\n---\n\n### 📝 任务详细清单\n`;
-            Object.keys(projectGroups).forEach(pName => {
-                md += `\n**${pName}**\n| 任务标题 | 状态 | 时长 |\n| :--- | :--- | :--- |\n`;
-                projectGroups[pName].tasks.forEach(t => {
-                    const statusText = t.status === 'done' ? '已完成' : (t.status === 'inprogress' ? '进行中' : '待办');
-                    const statusIcon = t.status === 'done' ? '✅' : (t.status === 'inprogress' ? '🔄' : '⭕');
-                    md += `| ${t.title} | ${statusIcon} ${statusText} | ${t.days}天 |\n`;
-                });
-            });
-            const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url; a.download = `Nexus_项目报告_${startVal}_${endVal}.md`;
-            document.body.appendChild(a); a.click();
-            setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+        }
+        function saveTask() {
+            const id = document.getElementById('edit-task-id').value, title = document.getElementById('input-title').value; if(!title) return;
+            const data = { title, project: document.getElementById('input-project').value, desc: document.getElementById('input-desc').value, start: document.getElementById('input-start').value, end: document.getElementById('input-end').value, status: document.querySelector('input[name="status"]:checked').value, color: document.getElementById('input-color').value };
+            if(id) { Object.assign(tasks.find(t => t.id == id), data); } else { tasks.unshift({ id: Date.now(), ...data }); }
+            saveTasks(); closeModal(); renderAllViews();
+        }
+        function deleteCurrentTask() { const id = document.getElementById('edit-task-id').value; setTimeout(() => { if(id && confirm("删除此任务？")) { tasks = tasks.filter(t => t.id != id); saveTasks(); closeModal(); renderAllViews(); } }, 10); }
+        function toggleTaskStatus(id) { const t = tasks.find(x => x.id === id); if(t) { t.status = t.status === 'done' ? 'todo' : 'done'; saveTasks(); renderAllViews(); } }
+        
+        function getProjectHierarchy(pName) {
+            for (let p of projectList) {
+                if (p.name === pName) return { parent: p.name, child: null, hex: p.hex };
+                if (p.children) { const c = p.children.find(child => child.name === pName); if (c) return { parent: p.name, child: c.name, hex: p.hex }; }
+            }
+            return { parent: '其他', child: pName, hex: '#9ca3af' };
         }
 
-        initUser();
-        setStatsPeriod('month'); 
-        renderAllViews();
+        function triggerDirectExport() {
+            let s = document.getElementById('stats-start-date').value, e = document.getElementById('stats-end-date').value;
+            if(!s || !e) { const t = new Date(); s = fmtDate(new Date(t.getFullYear(), t.getMonth(), 1)); e = fmtDate(new Date(t.getFullYear(), t.getMonth() + 1, 0)); }
+            const rel = getFilteredTasks().filter(t => t.start <= e && t.end >= s);
+            const grps = {};
+            rel.forEach(t => { 
+                const h = getProjectHierarchy(t.project);
+                const key = h.parent;
+                if(!grps[key]) grps[key] = {d:0, ts:[]}; 
+                const d = Math.ceil(Math.abs(new Date(t.end)-new Date(t.start))/86400000)+1; 
+                grps[key].d += d; 
+                grps[key].ts.push({...t, days:d, fullPath: h.child ? `${h.parent} > ${h.child}` : h.parent}); 
+            });
+            let md = `📅 **Nexus 报告** (${s} 至 ${e})\n\n### 概览\n| 项目组 | 任务 | 总人天 |\n| :--- | :--- | :--- |\n`;
+            Object.keys(grps).forEach(p => md += `| ${p} | ${grps[p].ts.length} | ${grps[p].d} |\n`); md += `\n---\n### 详情\n`;
+            Object.keys(grps).forEach(p => { 
+                md += `\n**${p}**\n| 任务 | 项目路径 | 状态 | 时长 |\n| :--- | :--- | :--- | :--- |\n`; 
+                grps[p].ts.forEach(t => md += `| ${t.title} | ${t.fullPath} | ${t.status==='done'?'✅':'⭕'} | ${t.days}天 |\n`); 
+            });
+            const b = new Blob([md], {type:'text/markdown'}), u = URL.createObjectURL(b), a = document.createElement('a'); a.href = u; a.download = `Report_${s}_${e}.md`; document.body.appendChild(a); a.click(); setTimeout(() => { a.remove(); URL.revokeObjectURL(u); }, 100);
+        }
+
+        function copyAIPrompt() {
+            const today = fmtDate(new Date()); let projects = [];
+            projectList.forEach(p => { if(p.children && p.children.length > 0) p.children.forEach(c => projects.push(`${p.name} - ${c.name}`)); else projects.push(p.name); });
+            const prompt = `我正在使用 Nexus 任务管理软件。我需要你作为一个专业的项目经理，帮助我将一段非结构化的项目描述拆解为具体的任务。当前日期: ${today}。现有的项目分类: [${projects.join(', ')}]。请遵循以下规则: 1. 分析我的描述，将其拆解为多个具体的可执行任务。2. 为每个任务分配最合适的现有项目分类（必须严格匹配上述列表中的名称，如果只能匹配父类，请使用父类名称）。3. 估算合理的开始时间和结束时间（格式 YYYY-MM-DD）。4. 状态只能是: "todo" (待办), "inprogress" (进行中), "done" (已完成)。5. 直接输出 JSON 格式代码，不要包含任何 Markdown 格式，只返回纯文本 JSON 数组。结构: [{"title":"任务名称","desc":"描述","start":"YYYY-MM-DD","end":"YYYY-MM-DD","project":"项目名","status":"todo"}]。`;
+            navigator.clipboard.writeText(prompt).then(() => showToast("Prompt 已复制，请粘贴给 AI"));
+        }
+        function processImport() {
+            const raw = document.getElementById('import-json-area').value;
+            try {
+                const arr = JSON.parse(raw); if (!Array.isArray(arr)) throw new Error("输入必须是 JSON 数组");
+                let count = 0; arr.forEach(item => { if (item.title && item.start && item.end) { let pName = item.project; tasks.unshift({ id: Date.now() + Math.floor(Math.random() * 1000), title: item.title, desc: item.desc || '', start: item.start, end: item.end, project: pName || '待办中心', status: ['todo', 'inprogress', 'done'].includes(item.status) ? item.status : 'todo', color: getProjectColor(pName) }); count++; } });
+                if(count > 0) { saveTasks(); renderAllViews(); closeImportModal(); showToast(`成功导入 ${count} 个任务`); } else { alert("未找到有效的任务数据"); }
+            } catch (e) { alert("JSON 解析失败: " + e.message); }
+        }
+        function showToast(msg) { const t = document.getElementById('toast'); document.getElementById('toast-msg').innerText = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3000); }
+
+        initUser(); setStatsPeriod('month'); renderAllViews();
     </script>
 </body>
 </html>
