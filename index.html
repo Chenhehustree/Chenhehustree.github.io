@@ -25,7 +25,8 @@
         .touch-mirror { position: fixed; z-index: 9999; pointer-events: none; opacity: 0.9; transform: scale(1.02); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); width: var(--mirror-width); background: white; border-radius: 0.5rem; }
         .cal-grid-cols-7 { grid-template-columns: repeat(7, minmax(0, 1fr)); }
         .cal-bg-pattern { background-image: linear-gradient(to right, rgba(0,0,0,0.03) 1px, transparent 1px), linear-gradient(to bottom, rgba(0,0,0,0.03) 1px, transparent 1px); background-size: 20px 20px; }
-        .cal-task-bar { position: relative; z-index: 10; transition: transform 0.1s ease-out, box-shadow 0.1s; color: rgba(0,0,0,0.7); }
+        .cal-task-bar { position: relative; z-index: 10; transition: transform 0.1s ease-out, box-shadow 0.1s; color: rgba(0,0,0,0.7); box-sizing: border-box; max-width: 100%; }
+        .cal-task-bar.done { opacity: 0.5; background-image: repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(0,0,0,0.05) 5px, rgba(0,0,0,0.05) 10px); }
         .task-segment-start { border-top-right-radius: 0; border-bottom-right-radius: 0; border-right: none; margin-right: -1px; z-index: 11; }
         .task-segment-mid { border-radius: 0; border-left: none; border-right: none; margin-left: -1px; margin-right: -1px; z-index: 10; }
         .task-segment-end { border-top-left-radius: 0; border-bottom-left-radius: 0; border-left: none; margin-left: -1px; z-index: 11; }
@@ -54,6 +55,103 @@
         .timeline-bar { position: absolute; border-radius: 4px; font-size: 10px; white-space: nowrap; overflow: hidden; display: flex; align-items: center; padding: 0 4px; transition: all 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
         .timeline-bar.compact { height: 4px; border-radius: 2px; padding: 0; }
         .timeline-bar.compact:hover { height: 16px; z-index: 50; }
+        
+        /* Stats hover tooltip */
+        .stats-row { position: relative; }
+        .stats-tooltip {
+            position: absolute;
+            left: 50%;
+            top: 100%;
+            transform: translateX(-50%);
+            margin-top: 8px;
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 12px;
+            min-width: 220px;
+            max-width: 280px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            z-index: 100;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.2s, visibility 0.2s;
+            pointer-events: none;
+            word-wrap: break-word;
+            white-space: normal;
+        }
+        .stats-tooltip::before {
+            content: '';
+            position: absolute;
+            top: -6px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-bottom: 6px solid #e5e7eb;
+        }
+        .stats-tooltip::after {
+            content: '';
+            position: absolute;
+            top: -5px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-bottom: 5px solid white;
+        }
+        .stats-row:hover .stats-tooltip {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        /* SVG Pie Chart Styles */
+        .pie-arc {
+            fill: none;
+            stroke-width: 20;
+            stroke-linecap: round;
+            cursor: pointer;
+            transition: stroke-width 0.2s ease, opacity 0.2s ease, filter 0.2s ease;
+            transform-origin: center;
+        }
+        .pie-arc:hover, .pie-arc.active {
+            stroke-width: 26;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.15));
+        }
+        .pie-arc.dimmed {
+            opacity: 0.3;
+        }
+        .stats-row.active {
+            background-color: #f4f4f5;
+            border-radius: 6px;
+        }
+        .stats-row.dimmed {
+            opacity: 0.4;
+        }
+        .pie-tooltip {
+            position: absolute;
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 12px;
+            min-width: 200px;
+            max-width: 260px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            z-index: 100;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.15s, visibility 0.15s;
+            pointer-events: none;
+            font-size: 12px;
+            word-wrap: break-word;
+            white-space: normal;
+        }
+        .pie-tooltip > div {
+            width: 100%;
+        }
+        .pie-tooltip.show {
+            opacity: 1;
+            visibility: visible;
+        }
     </style>
 </head>
 <body class="bg-white text-gray-900 h-screen flex overflow-hidden selection:bg-gray-900 selection:text-white">
@@ -173,7 +271,7 @@
 
                             <!-- Switch to Calendar View -->
                             <button onclick="navigateTo('calendar')" class="p-1 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors" title="切换到日历">
-                                <i data-lucide="calendar" class="w-4 h-4"></i>
+                                 <i data-lucide="calendar" class="w-4 h-4"></i>
                             </button>
                         </div>
                     </div>
@@ -288,24 +386,28 @@
                         <div class="text-3xl font-bold text-gray-900 tracking-tight" id="stat-project-count">0</div>
                     </div>
                     <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
-                        <div class="flex items-center space-x-2 text-gray-500 mb-2"><i data-lucide="clock" class="w-4 h-4"></i><span class="text-xs font-medium uppercase tracking-wide">记录总天数</span></div>
+                        <div class="flex items-center space-x-2 text-gray-500 mb-2"><i data-lucide="clock" class="w-4 h-4"></i><span class="text-xs font-medium uppercase tracking-wide">涉及任务数</span></div>
                         <div class="text-3xl font-bold text-gray-900 tracking-tight" id="stat-total-days">0</div>
                     </div>
                     <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
-                         <div class="flex items-center space-x-2 text-gray-500 mb-2"><i data-lucide="check-circle" class="w-4 h-4"></i><span class="text-xs font-medium uppercase tracking-wide">区间任务数</span></div>
+                         <div class="flex items-center space-x-2 text-gray-500 mb-2"><i data-lucide="check-circle" class="w-4 h-4"></i><span class="text-xs font-medium uppercase tracking-wide">总人天</span></div>
                         <div class="text-3xl font-bold text-gray-900 tracking-tight" id="stat-task-count">0</div>
                     </div>
                 </div>
                 <div class="bg-white p-6 sm:p-8 rounded-xl border border-gray-200 shadow-sm">
-                    <div class="flex items-center justify-between mb-8"><h3 class="font-medium text-gray-900">工作负载分布</h3></div>
+                    <div class="flex items-center justify-between mb-8"><h3 class="font-medium text-gray-900">工作负载分布</h3><span class="text-xs text-gray-400">悬停查看详情</span></div>
                     <div class="flex flex-col md:flex-row items-center gap-10 md:gap-16">
-                        <div class="relative w-56 h-56 shrink-0 pie-entrance">
-                            <div id="stats-pie-chart" class="w-full h-full rounded-full border border-gray-100 shadow-inner"></div>
-                            <div class="absolute inset-0 m-auto w-32 h-32 bg-white rounded-full flex items-center justify-center shadow-sm">
-                                <div class="text-center"><div class="text-xs text-gray-400 font-medium uppercase tracking-wide mb-0.5">总计</div><div class="text-2xl font-bold text-gray-900 tracking-tight" id="pie-center-label">0d</div></div>
+                        <div class="relative w-56 h-56 shrink-0 pie-entrance z-10 overflow-visible">
+                            <svg id="stats-pie-chart" class="w-full h-full overflow-visible" viewBox="-10 -10 220 220">
+                                <circle cx="100" cy="100" r="90" fill="none" stroke="#e5e7eb" stroke-width="20"/>
+                                <g id="pie-arcs"></g>
+                            </svg>
+                            <div class="absolute inset-0 m-auto w-32 h-32 bg-white rounded-full flex items-center justify-center shadow-sm pointer-events-none">
+                                <div class="text-center"><div class="text-xs text-gray-400 font-medium uppercase tracking-wide mb-0.5">任务数</div><div class="text-2xl font-bold text-gray-900 tracking-tight" id="pie-center-label">0</div></div>
                             </div>
+                            <div id="pie-tooltip" class="pie-tooltip"></div>
                         </div>
-                        <div class="flex-1 w-full space-y-4" id="stats-project-list"></div>
+                        <div class="flex-1 w-full space-y-4 pb-24 overflow-hidden" id="stats-project-list"></div>
                     </div>
                 </div>
             </div>
@@ -325,23 +427,38 @@
         <div class="flex-1 overflow-y-auto px-6 sm:px-8 py-6 touch-pan-y">
             <div class="space-y-6">
                 <div class="group">
-                    <div class="flex justify-between items-center mb-1.5">
-                        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide">任务标题</label>
-                        <div class="flex items-center gap-2">
-                            <label class="text-[10px] text-gray-400">颜色:</label>
-                            <input id="input-color" onchange="autoSaveTask()" type="color" class="w-5 h-5 cursor-pointer rounded border-none shadow-sm" value="#000000">
-                        </div>
-                    </div>
-                    <input id="input-title" oninput="autoSaveTask()" type="text" placeholder="需要做什么？" class="w-full text-lg font-medium text-gray-900 placeholder:text-gray-300 border-b border-gray-200 focus:border-gray-900 p-0 py-2 bg-transparent tracking-tight outline-none transition-colors rounded-none">
+                    <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">任务标题</label>
+                    <input id="input-title" oninput="autoSaveTask()" type="text" placeholder="需要做什么？" autocomplete="off" class="w-full text-lg font-medium text-gray-900 placeholder:text-gray-300 border-b border-gray-200 focus:border-gray-900 p-0 py-2 bg-transparent tracking-tight outline-none transition-colors rounded-none">
                 </div>
                 <div>
                     <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">所属项目</label>
                     <div id="project-view-mode" class="flex items-center gap-2">
                         <div class="relative flex-1">
-                            <select id="input-project" onchange="handleProjectChange(this.value); autoSaveTask()" class="w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-lg focus:ring-1 focus:ring-gray-900 focus:border-gray-900 block p-2.5 appearance-none cursor-pointer outline-none"></select>
+                            <select id="input-project" onchange="handleProjectChange(this.value); autoSaveTask()" autocomplete="off" class="w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-lg focus:ring-1 focus:ring-gray-900 focus:border-gray-900 block p-2.5 pr-10 appearance-none cursor-pointer outline-none"></select>
                             <i data-lucide="chevron-down" class="w-4 h-4 text-gray-400 absolute right-3 top-3 pointer-events-none"></i>
                         </div>
-                        <div class="relative">
+                        <!-- 快速改色按钮 -->
+                        <div class="relative flex-shrink-0">
+                            <button type="button" onclick="toggleColorMenu()" id="quick-color-btn" class="w-8 h-8 rounded-lg cursor-pointer hover:opacity-80 transition-opacity relative overflow-hidden flex-shrink-0 block border border-gray-200" style="background-color: #9ca3af;"></button>
+                            <!-- 颜色操作菜单 -->
+                            <div id="color-menu" class="hidden absolute right-0 top-full mt-2 w-44 bg-white rounded-lg shadow-xl border border-gray-100 z-50 overflow-hidden py-1">
+                                <div class="px-3 py-2 text-xs text-gray-400 border-b border-gray-100">选择颜色</div>
+                                <div class="p-2">
+                                    <input id="quick-color-input" onchange="quickUpdateProjectColor(this.value)" type="color" class="w-full h-8 rounded cursor-pointer border border-gray-200">
+                                </div>
+                                <div class="border-t border-gray-100 mt-1 pt-1">
+                                    <button type="button" onclick="resetProjectColor()" class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2">
+                                        <span class="w-3 h-3 rounded-full bg-gray-400"></span>
+                                        重置为灰色
+                                    </button>
+                                    <button type="button" id="sync-parent-color-btn" onclick="syncParentColor()" class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 hidden">
+                                        <span class="w-3 h-3 rounded-full border border-gray-300" id="sync-parent-dot"></span>
+                                        与父项目同步
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="relative flex-shrink-0">
                             <button type="button" onclick="toggleProjectMenu()" class="p-2.5 bg-white hover:bg-gray-50 active:bg-gray-100 rounded-lg text-gray-600 transition-colors border border-gray-200 shadow-sm"><i data-lucide="settings-2" class="w-4 h-4"></i></button>
                             <div id="project-menu" class="hidden absolute right-0 top-full mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-100 z-50 overflow-hidden py-1 ring-1 ring-black ring-opacity-5">
                                 <button type="button" onclick="enableProjectEditMode()" class="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 active:bg-gray-100 flex items-center gap-2"><i data-lucide="pencil" class="w-3.5 h-3.5 text-gray-400"></i> 管理项目</button>
@@ -373,10 +490,7 @@
         </div>
         <div class="px-6 py-4 border-t border-gray-100 bg-gray-50/50 flex items-center justify-between shrink-0 mb-safe pb-safe">
             <button type="button" id="btn-delete-task" onclick="deleteCurrentTask()" class="text-sm font-medium text-red-500 hover:text-red-700 px-3 py-2 hidden active:bg-red-50 rounded transition-colors select-none">删除任务</button>
-            <div class="flex space-x-3 ml-auto">
-                 <button onclick="closeModal()" class="text-xs font-medium text-gray-500 hover:text-gray-900 px-4 py-2">取消</button>
-                 <button onclick="saveTask()" class="bg-gray-900 hover:bg-gray-800 text-white text-xs font-medium px-6 py-2 rounded-md shadow-sm transition-transform active:scale-95">保存任务</button>
-            </div>
+            <button onclick="closeModal()" class="bg-gray-900 hover:bg-gray-800 text-white text-xs font-medium px-6 py-2 rounded-md shadow-sm transition-transform active:scale-95 ml-auto">保存任务</button>
         </div>
     </div>
 
@@ -398,18 +512,213 @@
     </div>
 
     <script>
-        const STORAGE_KEY = 'nexus_tasks';
-        const defaultTasks = [{ id: 1, title: '初始化系统设置', project: '设计系统', start: '2025-12-08', end: '2025-12-10', status: 'todo', desc: '', color: '#60a5fa' }, { id: 2, title: '数据库迁移', project: '后端开发', start: '2025-12-11', end: '2025-12-12', status: 'inprogress', desc: '', color: '#fbbf24' }, { id: 3, title: '审查 Q4 指标', project: '待办中心', start: '2025-12-09', end: '2025-12-09', status: 'done', desc: '', color: '#9ca3af' }, { id: 4, title: '用户测试', project: '设计系统', start: '2025-12-11', end: '2025-12-14', status: 'todo', desc: '', color: '#60a5fa' }];
-        const defaultProjects = [{ id: 'p1', name: '待办中心', hex: '#9ca3af', expanded: true, children: [] }, { id: 'p2', name: '设计系统', hex: '#60a5fa', expanded: true, children: [] }, { id: 'p3', name: '开发中心', hex: '#fbbf24', expanded: true, children: [{id: 'c1', name: '后端开发'}, {id: 'c2', name: '前端开发'}] }];
+        // ==================== 安全工具函数 ====================
         
-        let tasks = JSON.parse(localStorage.getItem(STORAGE_KEY)) || defaultTasks;
-        let projectList = JSON.parse(localStorage.getItem('nexus_projects')) || defaultProjects;
-        let userName = localStorage.getItem('nexus_username') || "John Doe";
-        let currentCalDate = { year: 2025, month: 11, day: 1 };
+        function escapeHtml(text) {
+            if (text === null || text === undefined) return '';
+            const str = String(text);
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+        
+        function generateId(prefix = 'id') {
+            if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+                return prefix + '_' + crypto.randomUUID().replace(/-/g, '').substring(0, 12);
+            }
+            const timestamp = Date.now().toString(36);
+            const random = Math.random().toString(36).substring(2, 10);
+            const random2 = Math.random().toString(36).substring(2, 6);
+            return prefix + '_' + timestamp + random + random2;
+        }
+        
+        function compareDateStr(dateStr1, operator, dateStr2) {
+            const d1 = new Date(dateStr1);
+            const d2 = new Date(dateStr2);
+            if (isNaN(d1.getTime()) || isNaN(d2.getTime())) {
+                console.warn('Invalid date comparison:', dateStr1, operator, dateStr2);
+                return false;
+            }
+            switch(operator) {
+                case '<=': return d1 <= d2;
+                case '>=': return d1 >= d2;
+                case '<': return d1 < d2;
+                case '>': return d1 > d2;
+                case '===': return d1.getTime() === d2.getTime();
+                default: return false;
+            }
+        }
+        
+        function dateDiffDays(startStr, endStr) {
+            const start = new Date(startStr);
+            const end = new Date(endStr);
+            if (isNaN(start.getTime()) || isNaN(end.getTime())) return 0;
+            return Math.ceil(Math.abs(end - start) / 86400000);
+        }
+
+        // 计算两个日期范围的重叠天数
+        function getOverlapDays(start1, end1, start2, end2) {
+            const s1 = new Date(start1);
+            const e1 = new Date(end1);
+            const s2 = new Date(start2);
+            const e2 = new Date(end2);
+            
+            const overlapStart = new Date(Math.max(s1, s2));
+            const overlapEnd = new Date(Math.min(e1, e2));
+            
+            if (overlapStart > overlapEnd) return 0;
+            return Math.ceil((overlapEnd - overlapStart) / 86400000) + 1;
+        }
+
+        // ==================== 项目路径工具函数 ====================
+
+        function getProjectPath(parentName, childName = null) {
+            if (childName && childName !== parentName) {
+                return parentName + ' > ' + childName;
+            }
+            return parentName;
+        }
+
+        function getDisplayNameFromPath(path) {
+            if (!path) return '';
+            const parts = path.split(' > ');
+            return parts.length > 1 ? parts[parts.length - 1] : path;
+        }
+
+        function getParentNameFromPath(path) {
+            if (!path) return '';
+            const parts = path.split(' > ');
+            return parts[0];
+        }
+
+        function getProjectColorByPath(path) {
+            if (!path) return '#9ca3af';
+            const parts = path.split(' > ');
+            const parentName = parts[0];
+            const p = projectList.find(proj => proj.name === parentName);
+            if (!p) return '#9ca3af';
+            // 如果路径包含子项目，优先返回子项目颜色
+            if (parts.length > 1) {
+                const childName = parts[parts.length - 1];
+                const child = (p.children || []).find(c => c.name === childName);
+                if (child && child.hex) return child.hex;
+            }
+            return p.hex;
+        }
+
+        // 获取父项目颜色（用于统计图表）
+        function getParentColorByPath(path) {
+            if (!path) return '#9ca3af';
+            const parentName = getParentNameFromPath(path);
+            const p = projectList.find(proj => proj.name === parentName);
+            return p ? p.hex : '#9ca3af';
+        }
+
+        function getProjectPathById(id) {
+            if (!id) return null;
+            
+            const parent = projectList.find(p => p.id == id);
+            if (parent) {
+                return parent.name;
+            }
+            
+            for (const p of projectList) {
+                if (p.children) {
+                    const child = p.children.find(c => c.id == id);
+                    if (child) {
+                        return getProjectPath(p.name, child.name);
+                    }
+                }
+            }
+            return null;
+        }
+
+        function taskMatchesFilter(task, filterPath) {
+            if (!filterPath) return true;
+            
+            const taskPath = task.project || '';
+            const taskParent = getParentNameFromPath(taskPath);
+            
+            if (filterPath.includes(' > ')) {
+                return taskPath === filterPath;
+            }
+            
+            return taskParent === filterPath;
+        }
+        
+        // ==================== 应用代码 ====================
+
+        const STORAGE_KEY = 'nexus_tasks';
+        const defaultTasks = (() => {
+            const now = new Date();
+            const fmt = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+            const today = fmt(now);
+            const tomorrowDate = new Date(now);
+            tomorrowDate.setDate(now.getDate() + 1);
+            const tomorrow = fmt(tomorrowDate);
+            const dayAfterDate = new Date(tomorrowDate);
+            dayAfterDate.setDate(tomorrowDate.getDate() + 1);
+            const dayAfter = fmt(dayAfterDate);
+            return [
+                { id: 't_default_1', title: '初始化系统设置', project: '设计系统', start: today, end: tomorrow, status: 'todo', desc: '' },
+                { id: 't_default_2', title: '数据库迁移', project: '开发中心 > 后端开发', start: tomorrow, end: dayAfter, status: 'inprogress', desc: '' },
+                { id: 't_default_3', title: '审查 Q4 指标', project: '待办中心', start: today, end: today, status: 'done', desc: '' },
+                { id: 't_default_4', title: '用户测试', project: '设计系统', start: tomorrow, end: dayAfter, status: 'todo', desc: '' }
+            ];
+        })();
+        const defaultProjects = [{ id: 'p1', name: '待办中心', hex: '#9ca3af', expanded: true, children: [] }, { id: 'p2', name: '设计系统', hex: '#60a5fa', expanded: true, children: [] }, { id: 'p3', name: '开发中心', hex: '#fbbf24', expanded: true, children: [{id: 'c1', name: '后端开发', hex: '#9ca3af'}, {id: 'c2', name: '前端开发', hex: '#9ca3af'}] }];
+        
+        // 获取当前日期作为默认日历日期
+        const today = new Date();
+        let tasks = defaultTasks, projectList = defaultProjects, userName = "John Doe";
+        try {
+            const storedTasks = localStorage.getItem(STORAGE_KEY);
+            const storedProjects = localStorage.getItem('nexus_projects');
+            const storedUser = localStorage.getItem('nexus_username');
+            if (storedTasks) tasks = JSON.parse(storedTasks);
+            if (storedProjects) projectList = JSON.parse(storedProjects);
+            if (storedUser) userName = storedUser;
+        } catch (e) {
+            console.error('Failed to load data from storage:', e);
+        }
+        let currentCalDate = { year: today.getFullYear(), month: today.getMonth(), day: today.getDate() };
         let calView = 'month', statsPeriod = 'month', currentView = 'inbox';
         let currentFilterId = null; 
         let isTimelineCompact = false;
-        let filterExpandedState = {}; 
+        let filterExpandedState = {};
+
+        // ==================== 撤销功能 ====================
+        let undoStack = [];
+        const MAX_UNDO = 20;
+        
+        function saveSnapshot(actionName) {
+            undoStack.push({
+                tasks: JSON.parse(JSON.stringify(tasks)),
+                projectList: JSON.parse(JSON.stringify(projectList)),
+                action: actionName
+            });
+            if (undoStack.length > MAX_UNDO) undoStack.shift();
+        }
+        
+        function undo() {
+            if (undoStack.length === 0) {
+                showToast("没有可撤销的操作");
+                return;
+            }
+            const prev = undoStack.pop();
+            tasks = prev.tasks;
+            projectList = prev.projectList;
+            saveTasks();
+            renderAllViews();
+            showToast(`已撤销: ${prev.action}`);
+        }
+        
+        document.addEventListener('keydown', e => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+                e.preventDefault();
+                undo();
+            }
+        }); 
 
         projectList.forEach(p => { if(p.name === '收件箱') p.name = '待办中心'; });
         tasks.forEach(t => { if(t.project === '收件箱') t.project = '待办中心'; });
@@ -418,6 +727,11 @@
             localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
             localStorage.setItem('nexus_projects', JSON.stringify(projectList));
             localStorage.setItem('nexus_username', userName);
+        }
+        
+        function saveTasksWithSnapshot(actionName) {
+            saveSnapshot(actionName);
+            saveTasks();
         }
 
         function initUser() {
@@ -436,6 +750,14 @@
 
         function navigateTo(v) {
             currentView = v;
+            
+            // 如果切换到日历视图，且日历日期不在当前年份，则同步为当前日期
+            const currentYear = new Date().getFullYear();
+            if (v === 'calendar' && Math.abs(currentCalDate.year - currentYear) > 1) {
+                const now = new Date();
+                currentCalDate = { year: now.getFullYear(), month: now.getMonth(), day: now.getDate() };
+            }
+            
             if(window.innerWidth < 768) { const s = document.getElementById('main-sidebar'); if (!s.classList.contains('-translate-x-full')) toggleSidebar(); }
             ['inbox', 'projects', 'calendar', 'stats'].forEach(x => {
                 document.getElementById(`view-${x}`).classList.add('hidden');
@@ -449,32 +771,22 @@
         }
 
         function getProjectColor(pName) {
-            let color = '#9ca3af';
-            projectList.forEach(p => {
-                if(p.name === pName) color = p.hex;
-                if(p.children) p.children.forEach(c => { if(c.name === pName) color = p.hex; });
-            });
-            return color;
+            return getProjectColorByPath(pName);
         }
 
         function getFilteredTasks() {
             if(!currentFilterId) return tasks;
-            const p = projectList.find(x => x.id === currentFilterId);
-            if(!p) {
-                 let foundChildName = null;
-                 projectList.forEach(parent => { if(parent.children) parent.children.forEach(c => { if(c.id === currentFilterId) foundChildName = c.name; }); });
-                 if(foundChildName) return tasks.filter(t => t.project === foundChildName);
-                 return tasks;
-            }
-            const targetNames = [p.name, ...(p.children||[]).map(c=>c.name)];
-            return tasks.filter(t => targetNames.includes(t.project));
+            
+            const filterPath = getProjectPathById(currentFilterId);
+            if(!filterPath) return tasks;
+            
+            return tasks.filter(t => taskMatchesFilter(t, filterPath));
         }
 
-        /* --- Filter Dropdown Logic --- */
         function toggleFilterDropdown(id) {
             const d = document.getElementById(id);
             if(d.classList.contains('hidden')) {
-                closeFilterDropdowns(); // Close others
+                closeFilterDropdowns();
                 renderFilterListContent();
                 d.classList.remove('hidden');
             } else {
@@ -497,11 +809,11 @@
             if(!id) {
                 labels.forEach(l => l.innerText = "项目筛选");
             } else {
-                let pName = "";
-                const p = projectList.find(x => x.id === id);
-                if(p) pName = p.name;
-                else { projectList.forEach(parent => { if(parent.children) parent.children.forEach(c => { if(c.id === id) pName = c.name; }); }); }
-                labels.forEach(l => l.innerText = pName);
+                const filterPath = getProjectPathById(id);
+                if (filterPath) {
+                    const displayName = getDisplayNameFromPath(filterPath);
+                    labels.forEach(l => l.innerText = displayName);
+                }
             }
             closeFilterDropdowns();
             renderAllViews();
@@ -524,11 +836,11 @@
                     const activeClass = isActive ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-100';
                     
                     let html = `<div class="flex items-center space-x-1 mb-0.5">`;
-                    html += `<div onclick="setProjectFilter('${p.id}')" class="cursor-pointer flex-1 flex items-center space-x-2 px-2 py-1.5 rounded-md text-xs transition-colors ${activeClass}">`;
-                    html += `<span class="w-2 h-2 rounded-full shrink-0" style="background-color:${p.hex}"></span><span class="truncate flex-1 font-medium">${p.name}</span>${isActive?'<i data-lucide="check" class="w-3 h-3"></i>':''}</div>`;
+                    html += `<div onclick="setProjectFilter('${escapeHtml(p.id)}')" class="cursor-pointer flex-1 flex items-center space-x-2 px-2 py-1.5 rounded-md text-xs transition-colors ${activeClass}">`;
+                    html += `<span class="w-2 h-2 rounded-full shrink-0" style="background-color:${escapeHtml(p.hex)}"></span><span class="truncate flex-1 font-medium">${escapeHtml(p.name)}</span>${isActive?'<i data-lucide="check" class="w-3 h-3"></i>':''}</div>`;
                     
                     if (hasChildren) {
-                         html += `<button onclick="toggleFilterExpand(event, '${p.id}')" class="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors"><i data-lucide="${isExpanded ? 'chevron-down' : 'chevron-right'}" class="w-3.5 h-3.5"></i></button>`;
+                         html += `<button onclick="toggleFilterExpand(event, '${escapeHtml(p.id)}')" class="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors"><i data-lucide="${isExpanded ? 'chevron-down' : 'chevron-right'}" class="w-3.5 h-3.5"></i></button>`;
                     } else {
                         html += `<div class="w-6"></div>`; 
                     }
@@ -539,7 +851,7 @@
                         p.children.forEach(sub => {
                             const isSubActive = currentFilterId === sub.id;
                             const subClass = isSubActive ? 'bg-blue-50 text-blue-700' : 'text-gray-500 hover:bg-gray-100';
-                            html += `<div onclick="setProjectFilter('${sub.id}')" class="cursor-pointer px-2 py-1 rounded-md text-xs truncate transition-colors ${subClass} flex items-center justify-between"><span>${sub.name}</span>${isSubActive?'<i data-lucide="check" class="w-3 h-3"></i>':''}</div>`;
+                            html += `<div onclick="setProjectFilter('${escapeHtml(sub.id)}')" class="cursor-pointer px-2 py-1 rounded-md text-xs truncate transition-colors ${subClass} flex items-center justify-between"><span class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full shrink-0" style="background-color:${escapeHtml(sub.hex)}"></span>${escapeHtml(sub.name)}</span>${isSubActive?'<i data-lucide="check" class="w-3 h-3"></i>':''}</div>`;
                         });
                         html += `</div>`;
                     }
@@ -557,31 +869,64 @@
         }
 
         function renderInbox() {
-            const l = document.getElementById('inbox-list'), cl = document.getElementById('inbox-completed-list'); l.innerHTML = ''; cl.innerHTML = ''; let c = 0;
+            const l = document.getElementById('inbox-list');
+            const cl = document.getElementById('inbox-completed-list');
+            l.innerHTML = '';
+            cl.innerHTML = '';
+            let c = 0;
             const visibleTasks = getFilteredTasks();
+            
             visibleTasks.forEach(t => {
-                const d = t.status === 'done'; if(!d) c++;
-                const color = t.color || getProjectColor(t.project);
-                (d ? cl : l).innerHTML += `<div class="group flex items-center p-3 hover:bg-gray-50 rounded-lg cursor-pointer border border-transparent hover:border-gray-200 transition-all ${d ? 'opacity-60' : ''}">
+                const d = t.status === 'done';
+                if(!d) c++;
+                const color = getProjectColorByPath(t.project);
+                const safeTitle = escapeHtml(t.title);
+                const displayProject = getDisplayNameFromPath(t.project);
+                const safeProject = escapeHtml(displayProject);
+                const safeColor = escapeHtml(color);
+                const dateDisplay = escapeHtml(formatDateDisplay(t.start));
+                
+                const taskEl = document.createElement('div');
+                taskEl.className = `group flex items-center p-3 hover:bg-gray-50 rounded-lg cursor-pointer border border-transparent hover:border-gray-200 transition-all ${d ? 'opacity-60' : ''}`;
+                taskEl.innerHTML = `
                     <div onclick="event.stopPropagation(); toggleTaskStatus(${t.id})" class="mr-3 ${d ? 'text-gray-400' : 'text-gray-300 group-hover:text-gray-400'} shrink-0 p-1"><i data-lucide="${d ? 'check-square' : 'square'}" class="w-5 h-5"></i></div>
-                    <div class="flex flex-col flex-1 min-w-0" onclick="openModal(${t.id})"><span class="text-sm ${d ? 'text-gray-500 line-through' : 'text-gray-700 font-medium'} truncate">${t.title}</span><span class="text-xs text-gray-400 truncate flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full" style="background-color:${color}"></span>${t.project} • ${formatDateDisplay(t.start)}</span></div>
-                    <div class="ml-auto pl-2 shrink-0" onclick="openModal(${t.id})"><span class="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">${t.project}</span></div></div>`;
+                    <div class="flex flex-col flex-1 min-w-0" onclick="openModal(${t.id})"><span class="text-sm ${d ? 'text-gray-500 line-through' : 'text-gray-700 font-medium'} truncate">${safeTitle}</span><span class="text-xs text-gray-400 truncate flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full" style="background-color:${safeColor}"></span>${safeProject} • ${dateDisplay}</span></div>
+                    <div class="ml-auto pl-2 shrink-0" onclick="openModal(${t.id})"><span class="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">${safeProject}</span></div>`;
+                
+                if (d) {
+                    cl.appendChild(taskEl);
+                } else {
+                    l.appendChild(taskEl);
+                }
             });
             document.getElementById('inbox-count').innerText = c;
         }
 
         function renderProjects() {
             const cols = { 'todo': document.getElementById('board-todo'), 'inprogress': document.getElementById('board-inprogress'), 'done': document.getElementById('board-done') };
-            Object.values(cols).forEach(e => e.innerHTML = ''); let counts = { 'todo': 0, 'inprogress': 0, 'done': 0 };
+            Object.values(cols).forEach(e => e.innerHTML = ''); 
+            let counts = { 'todo': 0, 'inprogress': 0, 'done': 0 };
             const visibleTasks = getFilteredTasks();
+            
             visibleTasks.forEach(t => {
                 if(!cols[t.status]) return;
                 counts[t.status]++;
-                const color = t.color || getProjectColor(t.project);
+                const color = getProjectColorByPath(t.project);
+                const safeTitle = escapeHtml(t.title);
+                const displayProject = getDisplayNameFromPath(t.project);
+                const safeProject = escapeHtml(displayProject);
+                const safeColor = escapeHtml(color);
+                const dateDisplay = escapeHtml(formatDateDisplay(t.start));
+                
                 const el = document.createElement('div');
-                el.className = 'bg-white p-3 rounded-lg border border-gray-200 shadow-sm cursor-grab hover:shadow-md transition-all select-none group touch-action-none kanban-item';
-                el.draggable = true; el.ondragstart = (e) => { e.dataTransfer.setData("text/plain", t.id); }; el.onclick = () => openModal(t.id); el.setAttribute('data-task-id', t.id);
-                el.innerHTML = `<div class="text-xs text-gray-400 mb-1 flex justify-between pointer-events-none"><span class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full" style="background-color:${color}"></span>${t.project}</span><span>${formatDateDisplay(t.start)}</span></div><div class="text-sm font-medium text-gray-800 leading-tight mb-2 pointer-events-none">${t.title}</div><div class="flex items-center justify-end pointer-events-none"><div class="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center text-[10px] text-gray-500 group-hover:bg-gray-200">JD</div></div>`;
+                const isDone = t.status === 'done';
+                el.className = `bg-white p-3 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-all select-none group touch-action-none kanban-item ${isDone ? 'cursor-not-allowed' : 'cursor-grab'}`;
+                el.draggable = !isDone; 
+                el.ondragstart = isDone ? null : (e) => { e.dataTransfer.setData("text/plain", t.id); }; 
+                el.onclick = () => openModal(t.id); 
+                el.setAttribute('data-task-id', t.id);
+                el.innerHTML = `<div class="text-xs text-gray-400 mb-1 flex justify-between pointer-events-none"><span class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full" style="background-color:${safeColor}"></span>${safeProject}</span><span>${dateDisplay}</span></div><div class="text-sm font-medium text-gray-800 leading-tight mb-2 pointer-events-none">${safeTitle}</div><div class="flex items-center justify-end pointer-events-none"><div class="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center text-[10px] text-gray-500 group-hover:bg-gray-200">JD</div></div>`;
+                
                 cols[t.status].appendChild(el);
             });
             ['todo','inprogress','done'].forEach(k => document.getElementById(`count-${k}`).innerText = counts[k]);
@@ -654,18 +999,30 @@
             if (calView === 'month') {
                 title.innerText = `${currentCalDate.year}年 ${mN[currentCalDate.month]}`;
                 const f = new Date(currentCalDate.year, currentCalDate.month, 1); start = new Date(currentCalDate.year, currentCalDate.month, 1 - (f.getDay() + 6) % 7);
-                wDs.forEach(d => hr.innerHTML += `<div class="py-2 text-center text-[10px] sm:text-[11px] font-semibold text-gray-400 uppercase border-r border-gray-100 last:border-r-0">${d.replace('周','')}</div>`);
+                wDs.forEach(d => {
+                    const dayEl = document.createElement('div');
+                    dayEl.className = 'py-2 text-center text-[10px] sm:text-[11px] font-semibold text-gray-400 uppercase border-r border-gray-100 last:border-r-0';
+                    dayEl.textContent = d.replace('周','');
+                    hr.appendChild(dayEl);
+                });
                 for(let i=0; i<35; i++) { const d = new Date(start); d.setDate(start.getDate() + i); days.push(d); }
             } else {
                 const c = new Date(currentCalDate.year, currentCalDate.month, currentCalDate.day); start = new Date(c.setDate(c.getDate() - (c.getDay() + 6) % 7));
                 title.innerText = `${start.getDate()}日 - ${mN[start.getMonth()]} (本周)`;
-                for(let i=0; i<7; i++) { const d = new Date(start); d.setDate(start.getDate() + i); days.push(d); hr.innerHTML += `<div class="py-2 text-center text-[10px] sm:text-[11px] font-semibold text-gray-400 uppercase border-r border-gray-100 last:border-r-0">${wDs[i].replace('周','')} ${d.getDate()}</div>`; }
+                for(let i=0; i<7; i++) { const d = new Date(start); d.setDate(start.getDate() + i); days.push(d); 
+                    const dayEl = document.createElement('div');
+                    dayEl.className = 'py-2 text-center text-[10px] sm:text-[11px] font-semibold text-gray-400 uppercase border-r border-gray-100 last:border-r-0';
+                    dayEl.textContent = `${wDs[i].replace('周','')} ${d.getDate()}`;
+                    hr.appendChild(dayEl);
+                }
             }
             gb.className = `flex-1 overflow-y-auto min-h-0 bg-white grid grid-cols-7 ${calView === 'month' ? 'grid-rows-5' : 'grid-rows-1'}`;
             const renderS = days[0], renderE = days[days.length-1], fmt = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
             
+            // 修改：显示所有任务，包括已完成的
             const visibleTasks = getFilteredTasks();
-            let vTasks = visibleTasks.filter(t => t.status !== 'done' && t.start <= fmt(renderE) && t.end >= fmt(renderS)).sort((a,b) => a.start.localeCompare(b.start) || b.end.localeCompare(a.end));
+            // 不过滤已完成任务，只按时间范围筛选
+            let vTasks = visibleTasks.filter(t => t.start <= fmt(renderE) && t.end >= fmt(renderS)).sort((a,b) => a.start.localeCompare(b.start) || b.end.localeCompare(a.end));
             
             let slots = {}; vTasks.forEach(t => {
                 let s = new Date(Math.max(new Date(t.start), renderS)), e = new Date(Math.min(new Date(t.end), renderE)), idx = 0;
@@ -681,24 +1038,92 @@
                 const cell = document.createElement('div'); cell.className = `border-b border-r border-gray-200 flex flex-col relative group transition-colors ${bg}`; cell.setAttribute('data-date', dStr);
                 cell.ondragover = (e) => { e.preventDefault(); const dur = currentDragState ? currentDragState.duration : 1; document.querySelectorAll('.drag-preview-cell').forEach(el => el.classList.remove('drag-preview-cell')); for(let i=0; i<dur; i++){ let td = new Date(dStr); td.setDate(new Date(dStr).getDate()+i); let c = document.querySelector(`div[data-date="${fmt(td)}"]`); if(c) c.classList.add('drag-preview-cell'); } };
                 cell.ondrop = (e) => handleDrop(e, dStr);
-                cell.innerHTML = calView === 'month' ? `<span class="text-xs p-1.5 text-right block ${new Date().toDateString() === dObj.toDateString() ? 'font-bold text-blue-600' : 'text-gray-400'} select-none pointer-events-none">${dObj.getDate()}</span>` : '<div class="h-1"></div>';
-                const tc = document.createElement('div'); tc.className = "flex-1 flex flex-col gap-0.5 w-full px-0.5 pb-1 relative z-20";
+                
+                const dateSpan = document.createElement('span');
+                dateSpan.className = `text-xs p-1.5 text-right block ${new Date().toDateString() === dObj.toDateString() ? 'font-bold text-blue-600' : 'text-gray-400'} select-none pointer-events-none`;
+                dateSpan.textContent = dObj.getDate();
+                if (calView === 'month') {
+                    cell.appendChild(dateSpan);
+                } else {
+                    cell.innerHTML = '<div class="h-1"></div>';
+                }
+                
+                const tc = document.createElement('div');
+                tc.className = "flex-1 flex flex-col gap-0.5 w-full px-0.5 pb-1 relative z-20";
                 const daySlots = slots[dStr] || [];
                 for(let i=0; i<daySlots.length; i++) {
                     const tid = daySlots[i];
-                    if(!tid) { tc.appendChild(document.createElement('div')).className = "h-6 w-full"; continue; }
-                    const t = vTasks.find(x => x.id === tid), isS = t.start === dStr, isE = t.end === dStr, isRowS = dStr === fmt(renderS) || dObj.getDay() === 1;
-                    const color = t.color || getProjectColor(t.project);
+                    if(!tid) { 
+                        const spacer = document.createElement('div');
+                        spacer.className = "h-5 sm:h-6 w-full";
+                        tc.appendChild(spacer); 
+                        continue; 
+                    }
+                    const t = vTasks.find(x => x.id == tid), isS = t.start === dStr, isE = t.end === dStr, isRowS = dStr === fmt(renderS) || dObj.getDay() === 1;
+                    const color = getProjectColorByPath(t.project);
+                    const isDone = t.status === 'done';
                     let r=0,g=0,b=0; if(color.length===4){r=parseInt(color[1]+color[1],16);g=parseInt(color[2]+color[2],16);b=parseInt(color[3]+color[3],16);}else if(color.length===7){r=parseInt(color.slice(1,3),16);g=parseInt(color.slice(3,5),16);b=parseInt(color.slice(5,7),16);}
-                    const bar = document.createElement('div'); bar.draggable = true; 
-                    bar.className = `cal-task-bar h-6 text-[10px] font-medium flex items-center border select-none cursor-pointer truncate ${isS&&isE?'rounded-md mx-0.5':(isS?'rounded-l-md task-segment-start':(isE?'rounded-r-md task-segment-end':'task-segment-mid'))}`;
-                    bar.style.backgroundColor = `rgba(${r},${g},${b},0.15)`; bar.style.borderColor = `rgba(${r},${g},${b},0.25)`; bar.style.color = 'rgba(23,23,23,0.8)';
-                    bar.setAttribute('data-task-id', t.id); bar.ondragstart = (e) => { e.dataTransfer.setData("text/plain", t.id); currentDragState = { id: t.id, duration: Math.ceil(Math.abs(new Date(t.end) - new Date(t.start)) / 86400000) + 1 }; }; bar.onclick = (e) => { e.stopPropagation(); openModal(t.id); };
-                    const marker = `<div class="w-1 h-full absolute left-0 top-0 opacity-50" style="background-color:${color}"></div>`;
-                    bar.innerHTML = `${isS? marker + `<div class="resize-handle resize-handle-l" onmousedown="initResize(event, ${t.id}, 'start')"></div>`:''}${isS||isRowS?`<span class="truncate px-1.5 pl-2 w-full sticky left-0 pointer-events-none">${t.title}</span>`:'&nbsp;'}${isE?`<div class="resize-handle resize-handle-r" onmousedown="initResize(event, ${t.id}, 'end')"></div>`:''}`;
+                    
+                    const safeTitle = escapeHtml(t.title);
+                    
+                    const bar = document.createElement('div'); 
+                    bar.draggable = !isDone; 
+                    // 已完成任务添加特殊样式
+                    bar.className = `cal-task-bar h-5 sm:h-6 text-[9px] sm:text-[10px] font-medium flex items-center border select-none cursor-pointer ${isS&&isE?'rounded-md mx-0.5':(isS?'rounded-l-md task-segment-start':(isE?'rounded-r-md task-segment-end':'task-segment-mid'))} ${isDone ? 'done' : ''}`;
+                    
+                    // 已完成任务使用灰色背景
+                    if (isDone) {
+                        bar.style.backgroundColor = 'rgba(156, 163, 175, 0.2)';
+                        bar.style.borderColor = 'rgba(156, 163, 175, 0.3)';
+                        bar.style.color = 'rgba(107, 114, 128, 0.8)';
+                    } else {
+                        bar.style.backgroundColor = `rgba(${r},${g},${b},0.15)`; 
+                        bar.style.borderColor = `rgba(${r},${g},${b},0.25)`; 
+                        bar.style.color = 'rgba(23,23,23,0.8)';
+                    }
+                    
+                    bar.setAttribute('data-task-id', t.id); 
+                    bar.ondragstart = isDone ? null : (e) => { e.dataTransfer.setData("text/plain", t.id); currentDragState = { id: t.id, duration: dateDiffDays(t.start, t.end) + 1 }; }; 
+                    bar.onclick = (e) => { e.stopPropagation(); openModal(t.id); };
+                    
+                    const marker = document.createElement('div');
+                    marker.className = 'w-1 h-full absolute left-0 top-0 opacity-50';
+                    marker.style.backgroundColor = isDone ? '#9ca3af' : color;
+                    
+                    if (isS) {
+                        bar.appendChild(marker);
+                        if (!isDone) {
+                            const resizeHandleL = document.createElement('div');
+                            resizeHandleL.className = 'resize-handle resize-handle-l';
+                            resizeHandleL.onmousedown = (e) => initResize(e, t.id, 'start');
+                            bar.appendChild(resizeHandleL);
+                        }
+                    }
+                    
+                    if (isS || isRowS) {
+                        const titleSpan = document.createElement('span');
+                        titleSpan.className = 'px-1 pl-1.5 w-full sticky left-0 pointer-events-none';
+                        titleSpan.style.textDecoration = isDone ? 'line-through' : 'none';
+                        titleSpan.style.overflow = 'hidden';
+                        titleSpan.style.textOverflow = 'ellipsis';
+                        titleSpan.style.whiteSpace = 'nowrap';
+                        titleSpan.textContent = t.title;
+                        bar.appendChild(titleSpan);
+                    } else {
+                        bar.innerHTML += '&nbsp;';
+                    }
+                    
+                    if (isE && !isDone) {
+                        const resizeHandleR = document.createElement('div');
+                        resizeHandleR.className = 'resize-handle resize-handle-r';
+                        resizeHandleR.onmousedown = (e) => initResize(e, t.id, 'end');
+                        bar.appendChild(resizeHandleR);
+                    }
+                    
                     tc.appendChild(bar);
                 }
-                cell.appendChild(tc); gb.appendChild(cell);
+                cell.appendChild(tc); 
+                gb.appendChild(cell);
             });
             setTimeout(() => TouchDragManager.init(), 100);
         }
@@ -707,7 +1132,9 @@
             const pListEl = document.getElementById('timeline-project-list');
             const hEl = document.getElementById('timeline-header');
             const bEl = document.getElementById('timeline-body');
-            pListEl.innerHTML = ''; hEl.innerHTML = ''; bEl.innerHTML = '';
+            pListEl.innerHTML = ''; 
+            hEl.innerHTML = ''; 
+            bEl.innerHTML = '';
 
             const daysInMonth = new Date(currentCalDate.year, currentCalDate.month + 1, 0).getDate();
             const days = [];
@@ -715,7 +1142,10 @@
             
             days.forEach(d => {
                 const isWk = d.getDay() === 0 || d.getDay() === 6;
-                hEl.innerHTML += `<div class="timeline-day-col ${isWk?'bg-gray-50':''}">${d.getDate()}</div>`;
+                const dayEl = document.createElement('div');
+                dayEl.className = `timeline-day-col ${isWk?'bg-gray-50':''}`;
+                dayEl.textContent = d.getDate();
+                hEl.appendChild(dayEl);
             });
 
             const rowHeight = isTimelineCompact ? 'h-6' : 'h-10';
@@ -726,14 +1156,16 @@
             
             projectList.forEach(p => {
                 flattenedProjs.push({name: p.name, id: p.id, hex: p.hex, isParent: true});
-                if(p.children) p.children.forEach(c => flattenedProjs.push({name: c.name, id: c.id, hex: p.hex, isParent: false}));
+                if(p.children) p.children.forEach(c => flattenedProjs.push({name: c.name, id: c.id, hex: p.hex, isParent: false, parentName: p.name}));
             });
 
             flattenedProjs.forEach((p, idx) => {
                 const isParent = p.isParent;
+                const projPath = isParent ? p.name : getProjectPath(p.parentName, p.name);
+                
                 const pDiv = document.createElement('div');
                 pDiv.className = `flex items-center px-4 ${rowHeight} border-b border-gray-100 ${isParent?'bg-white':'bg-gray-50'} text-xs truncate`;
-                pDiv.innerHTML = `<span class="w-2 h-2 rounded-full mr-2 shrink-0" style="background-color:${p.hex}"></span><span class="${isParent?'font-semibold text-gray-800':'text-gray-500 pl-2'} truncate">${p.name}</span>`;
+                pDiv.innerHTML = `<span class="w-2 h-2 rounded-full mr-2 shrink-0" style="background-color:${escapeHtml(p.hex)}"></span><span class="${isParent?'font-semibold text-gray-800':'text-gray-500 pl-2'} truncate">${escapeHtml(p.name)}</span>`;
                 pListEl.appendChild(pDiv);
 
                 const rDiv = document.createElement('div');
@@ -747,7 +1179,13 @@
                 });
                 rDiv.innerHTML = gridBg;
 
-                const pTasks = visibleTasks.filter(t => t.project === p.name && t.status !== 'done');
+                const pTasks = visibleTasks.filter(t => {
+                    if (isParent) {
+                        return getParentNameFromPath(t.project) === p.name;
+                    }
+                    return t.project === projPath;
+                });
+                
                 pTasks.forEach(t => {
                     const start = new Date(t.start);
                     const end = new Date(t.end);
@@ -764,7 +1202,9 @@
                         const left = (startDay - 1) * 40;
                         const width = dur * 40 - 2; 
 
-                        let r=0,g=0,b=0; let hex = t.color || p.hex;
+                        const isDone = t.status === 'done';
+                        let hex = isDone ? '#9ca3af' : getProjectColorByPath(t.project);
+                        let r=0,g=0,b=0; 
                         if(hex.length===4){r=parseInt(hex[1]+hex[1],16);g=parseInt(hex[2]+hex[2],16);b=parseInt(hex[3]+hex[3],16);}else if(hex.length===7){r=parseInt(hex.slice(1,3),16);g=parseInt(hex.slice(3,5),16);b=parseInt(hex.slice(5,7),16);}
                         
                         const bar = document.createElement('div');
@@ -774,9 +1214,13 @@
                         bar.style.backgroundColor = `rgba(${r},${g},${b},${isTimelineCompact ? 0.8 : 0.2})`;
                         bar.style.border = isTimelineCompact ? 'none' : `1px solid rgba(${r},${g},${b},0.3)`;
                         bar.style.color = isTimelineCompact ? 'transparent' : '#1f2937';
+                        if (isDone) bar.style.opacity = '0.5';
                         
-                        if(!isTimelineCompact) bar.innerText = t.title;
-                        bar.title = `${t.title} (${t.start} - ${t.end})`;
+                        if(!isTimelineCompact) {
+                            bar.innerText = t.title;
+                            if (isDone) bar.style.textDecoration = 'line-through';
+                        }
+                        bar.title = `${t.title} (${t.start} - ${t.end})${isDone ? ' [已完成]' : ''}`;
                         bar.onclick = () => openModal(t.id);
                         
                         rDiv.appendChild(bar);
@@ -787,6 +1231,7 @@
             
             const scrollArea = document.getElementById('timeline-scroll-area');
             const pList = document.getElementById('timeline-project-list');
+            scrollArea.onscroll = null;
             scrollArea.onscroll = (e) => {
                 pList.scrollTop = e.target.scrollTop;
             };
@@ -803,77 +1248,728 @@
         function updateStatsFromInputs() { statsPeriod = 'custom'; ['today', 'week', 'month'].forEach(k => document.getElementById(`stats-btn-${k}`).className = 'px-3 py-1 text-xs font-medium rounded-md transition-all whitespace-nowrap text-gray-500'); renderStats(); }
         
         function renderStats() {
-            const list = document.getElementById('stats-project-list'), pie = document.getElementById('stats-pie-chart'), sVal = document.getElementById('stats-start-date').value, eVal = document.getElementById('stats-end-date').value;
-            list.innerHTML = ''; if(!sVal || !eVal) return;
+            const list = document.getElementById('stats-project-list'),
+                  pieArcs = document.getElementById('pie-arcs'),
+                  pieTooltip = document.getElementById('pie-tooltip'),
+                  sVal = document.getElementById('stats-start-date').value,
+                  eVal = document.getElementById('stats-end-date').value;
+
+            list.innerHTML = '';
+            pieArcs.innerHTML = '';
+            if(!sVal || !eVal) return;
+
             const sD = new Date(sVal), eD = new Date(eVal);
-            let totals = {}, allDays = 0, count = 0; projectList.forEach(p => { totals[p.name] = 0; (p.children||[]).forEach(c => totals[c.name] = 0); });
-            const visibleTasks = getFilteredTasks();
-            visibleTasks.forEach(t => {
-                const start = new Date(Math.max(sD, new Date(t.start))), end = new Date(Math.min(eD, new Date(t.end)));
-                if (start <= end) { const d = Math.ceil((end - start) / 86400000) + 1; totals[t.project] = (totals[t.project]||0) + d; allDays += d; count++; }
+
+            // 筛选在时间段内有重叠的任务
+            const visibleTasks = getFilteredTasks().filter(t => {
+                const taskStart = new Date(t.start);
+                const taskEnd = new Date(t.end);
+                return taskStart <= eD && taskEnd >= sD;
             });
-            document.getElementById('stat-project-count').innerText = Object.values(totals).filter(v => v > 0).length; document.getElementById('stat-total-days').innerText = allDays; document.getElementById('stat-task-count').innerText = count; document.getElementById('pie-center-label').innerText = allDays + '天';
-            let data = []; projectList.forEach(p => { if(totals[p.name]>0) data.push({name:p.name, v:totals[p.name], c:p.hex}); (p.children||[]).forEach(c => { if(totals[c.name]>0) data.push({name:c.name, v:totals[c.name], c:p.hex}); }); });
-            data.sort((a,b) => b.v - a.v);
-            if(allDays === 0) { list.innerHTML = '<div class="text-sm text-gray-400 py-4">无活动</div>'; pie.style.background = '#f4f4f5'; } 
-            else {
-                let deg = 0, grads = [];
-                data.forEach(d => {
-                    const pct = d.v/allDays, endDeg = pct*360; grads.push(`${d.c} ${deg}deg ${deg+endDeg}deg`); deg += endDeg;
-                    list.innerHTML += `<div class="flex items-center group"><div class="flex-none w-28 sm:w-32 md:w-40"><div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full" style="background-color: ${d.c}"></span><span class="text-sm font-medium text-gray-700 truncate">${d.name}</span></div></div><div class="flex-1 mx-2 sm:mx-4"><div class="h-2 w-full bg-gray-100 rounded-full overflow-hidden"><div class="h-full rounded-full" style="width: ${pct*100}%; background-color: ${d.c}"></div></div></div><div class="flex-none w-16 text-right"><span class="text-sm font-semibold text-gray-900">${d.v}天</span></div></div>`;
+
+            // 统计每个任务在时间段内的交集天数
+            const taskStats = visibleTasks.map(t => {
+                const overlapDays = getOverlapDays(t.start, t.end, sVal, eVal);
+                const parentName = getParentNameFromPath(t.project);
+                return { ...t, overlapDays, parentName };
+            });
+
+            const totalTaskCount = taskStats.length;
+            const totalOverlapDays = taskStats.reduce((sum, t) => sum + t.overlapDays, 0);
+
+            // 按父项目分组统计 - 包括所有定义的父项目
+            const projectGroups = {};
+            // 初始化所有父项目（包括没有任务的）
+            projectList.forEach(p => {
+                projectGroups[p.name] = {
+                    tasks: [],
+                    totalDays: 0,
+                    hex: p.hex,
+                    isEmpty: true
+                };
+            });
+
+            // 填充任务数据
+            taskStats.forEach(t => {
+                if (projectGroups[t.parentName]) {
+                    projectGroups[t.parentName].tasks.push(t);
+                    projectGroups[t.parentName].totalDays += t.overlapDays;
+                    projectGroups[t.parentName].isEmpty = false;
+                }
+            });
+
+            // 更新顶部统计卡片
+            const activeProjectCount = Object.values(projectGroups).filter(g => !g.isEmpty).length;
+            document.getElementById('stat-project-count').innerText = activeProjectCount;
+            document.getElementById('stat-total-days').innerText = totalTaskCount;
+            document.getElementById('stat-task-count').innerText = totalOverlapDays;
+
+            // 准备数据：所有父项目
+            let data = projectList.map((p, idx) => {
+                const g = projectGroups[p.name];
+                return {
+                    id: 'project-' + idx,
+                    name: p.name,
+                    taskCount: g.tasks.length,
+                    totalDays: g.totalDays,
+                    tasks: g.tasks,
+                    c: g.isEmpty ? '#e5e7eb' : p.hex,
+                    isEmpty: g.isEmpty
+                };
+            });
+
+            // 按任务数排序（有任务的在前）
+            data.sort((a, b) => b.taskCount - a.taskCount);
+
+            // SVG 弧形绘制辅助函数
+            const cx = 100, cy = 100, r = 90;
+            function polarToCartesian(cx, cy, r, angleInDegrees) {
+                const angleInRadians = (angleInDegrees - 90) * Math.PI / 180.0;
+                return {
+                    x: cx + (r * Math.cos(angleInRadians)),
+                    y: cy + (r * Math.sin(angleInRadians))
+                };
+            }
+            function describeArc(cx, cy, r, startAngle, endAngle) {
+                // 处理完整圆的情况
+                if (endAngle - startAngle >= 359.99) {
+                    endAngle = startAngle + 359.99;
+                }
+                const start = polarToCartesian(cx, cy, r, endAngle);
+                const end = polarToCartesian(cx, cy, r, startAngle);
+                const largeArcFlag = endAngle - startAngle <= 180 ? "0" : "1";
+                return `M ${start.x} ${start.y} A ${r} ${r} 0 ${largeArcFlag} 0 ${end.x} ${end.y}`;
+            }
+
+            // 高亮控制函数
+            function highlightProject(projectId) {
+                // 高亮对应的弧形
+                document.querySelectorAll('.pie-arc').forEach(arc => {
+                    if (arc.dataset.projectId === projectId) {
+                        arc.classList.add('active');
+                        arc.classList.remove('dimmed');
+                    } else {
+                        arc.classList.add('dimmed');
+                        arc.classList.remove('active');
+                    }
                 });
-                pie.style.background = `conic-gradient(${grads.join(', ')})`;
+                // 高亮对应的列表行
+                document.querySelectorAll('.stats-row').forEach(row => {
+                    if (row.dataset.projectId === projectId) {
+                        row.classList.add('active');
+                        row.classList.remove('dimmed');
+                    } else {
+                        row.classList.add('dimmed');
+                        row.classList.remove('active');
+                    }
+                });
+            }
+
+            function clearHighlight() {
+                document.querySelectorAll('.pie-arc').forEach(arc => {
+                    arc.classList.remove('active', 'dimmed');
+                });
+                document.querySelectorAll('.stats-row').forEach(row => {
+                    row.classList.remove('active', 'dimmed');
+                });
+                pieTooltip.classList.remove('show');
+            }
+
+            // 显示环形图 tooltip
+            function showPieTooltip(e, d) {
+                // 先清空内容避免叠加
+                pieTooltip.innerHTML = '';
+                
+                const taskListHtml = d.tasks.length > 0
+                    ? d.tasks.map(t => {
+                        const title = escapeHtml(t.title || '未命名任务');
+                        const days = t.overlapDays || 0;
+                        return `<div class="flex items-center justify-between py-1 border-b border-gray-100 last:border-0" style="min-height: 20px;">
+                            <span class="text-xs text-gray-700 truncate max-w-[120px]" title="${title}">${title}</span>
+                            <span class="text-xs text-gray-500 ml-2 flex-shrink-0">${days}天</span>
+                        </div>`;
+                    }).join('')
+                    : '<div class="text-xs text-gray-400 py-1">该时间段内无任务</div>';
+
+                const headerHtml = `
+                    <div class="flex items-center gap-2 mb-2 pb-2 border-b border-gray-100">
+                        <span class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: ${escapeHtml(d.c)}"></span>
+                        <span class="text-xs font-semibold text-gray-700 truncate flex-1">${escapeHtml(d.name)}</span>
+                        <span class="text-xs text-gray-400 flex-shrink-0 ml-2">${d.taskCount}个任务</span>
+                    </div>
+                `;
+                
+                const footerHtml = d.totalDays > 0 
+                    ? `<div class="text-xs text-gray-500 mt-2 pt-2 border-t border-gray-100">时间段内共 ${d.totalDays} 人天</div>` 
+                    : '';
+                
+                pieTooltip.innerHTML = headerHtml + `<div class="max-h-32 overflow-y-auto">${taskListHtml}</div>` + footerHtml;
+
+                // 计算 tooltip 位置
+                const pieChart = document.getElementById('stats-pie-chart');
+                const rect = pieChart.getBoundingClientRect();
+                const containerRect = pieChart.parentElement.getBoundingClientRect();
+
+                // 基于鼠标位置调整 tooltip
+                let left = e.clientX - containerRect.left + 15;
+                let top = e.clientY - containerRect.top + 15;
+
+                // 确保不超出容器
+                if (left + 220 > containerRect.width) {
+                    left = e.clientX - containerRect.left - 220;
+                }
+                if (top + 150 > containerRect.height) {
+                    top = e.clientY - containerRect.top - 150;
+                }
+
+                pieTooltip.style.left = left + 'px';
+                pieTooltip.style.top = top + 'px';
+                pieTooltip.classList.add('show');
+            }
+
+            if(totalTaskCount === 0) {
+                // 没有任务时，显示0%负载率
+                document.getElementById('pie-center-label').innerText = '0%';
+                const centerLabel = document.getElementById('pie-center-label');
+                if (centerLabel.previousElementSibling) {
+                    centerLabel.previousElementSibling.innerText = '负载率';
+                }
+
+                // 显示所有项目为灰色，均匀分布
+                let startAngle = 0;
+                const count = data.length;
+                data.forEach((d, idx) => {
+                    const pct = 1 / count;
+                    const endAngle = startAngle + pct * 360;
+
+                    // 创建 SVG 弧形
+                    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                    path.setAttribute('d', describeArc(cx, cy, r, startAngle, endAngle));
+                    path.setAttribute('stroke', d.c);
+                    path.setAttribute('class', 'pie-arc');
+                    path.dataset.projectId = d.id;
+                    pieArcs.appendChild(path);
+
+                    startAngle = endAngle;
+
+                    // 创建列表行（无悬停提示）
+                    const row = document.createElement('div');
+                    row.className = 'stats-row flex items-center opacity-50 py-1';
+                    row.dataset.projectId = d.id;
+                    row.innerHTML = `
+                        <div class="flex-none w-28 sm:w-32 md:w-40">
+                            <div class="flex items-center gap-2">
+                                <span class="w-2.5 h-2.5 rounded-full" style="background-color: ${escapeHtml(d.c)}"></span>
+                                <span class="text-sm font-medium text-gray-700 truncate">${escapeHtml(d.name)}</span>
+                            </div>
+                        </div>
+                        <div class="flex-1 mx-2 sm:mx-4">
+                            <div class="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+                                <div class="h-full rounded-full" style="width: 100%; background-color: ${escapeHtml(d.c)}"></div>
+                            </div>
+                        </div>
+                        <div class="flex-none w-20 text-right">
+                            <span class="text-sm font-semibold text-gray-400">0个</span>
+                        </div>
+                    `;
+                    list.appendChild(row);
+                });
+            } else {
+                // 有任务时，按人天占时间段比例分配圆环
+                // 计算时间段总天数
+                const periodTotalDays = Math.round((eD - sD) / (1000 * 60 * 60 * 24)) + 1;
+
+                // 过滤掉没有任务的项目（在环形图中不显示）
+                const activeData = data.filter(d => d.taskCount > 0);
+
+                // 总占比 = min(任务总人天 / 时间段天数, 1)，最多100%
+                const totalRatio = Math.min(totalOverlapDays / periodTotalDays, 1);
+                const totalUsedDegrees = totalRatio * 360;
+
+                // 间隔角度（多个项目时添加间隔）
+                const gapAngle = activeData.length > 1 ? 3 : 0;
+                const totalGap = gapAngle * activeData.length;
+                const availableDegrees = totalUsedDegrees - totalGap;
+
+                let startAngle = 0;
+
+                activeData.forEach((d, idx) => {
+                    // 按每个项目的人天数在总人天中的占比来分配弧形
+                    const pct = d.totalDays / totalOverlapDays;
+                    const arcAngle = Math.max(pct * availableDegrees, 2); // 最小2度，保证可见
+                    const endAngle = startAngle + arcAngle;
+
+                    // 创建 SVG 弧形
+                    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                    path.setAttribute('d', describeArc(cx, cy, r, startAngle, endAngle));
+                    path.setAttribute('stroke', d.c);
+                    path.setAttribute('class', 'pie-arc');
+                    path.dataset.projectId = d.id;
+
+                    // 弧形悬停事件
+                    path.addEventListener('mouseenter', (e) => {
+                        highlightProject(d.id);
+                        showPieTooltip(e, d);
+                    });
+                    path.addEventListener('mousemove', (e) => {
+                        showPieTooltip(e, d);
+                    });
+                    path.addEventListener('mouseleave', clearHighlight);
+
+                    pieArcs.appendChild(path);
+                    startAngle = endAngle + gapAngle;
+                });
+
+                // 更新中心标签：显示负载百分比
+                document.getElementById('pie-center-label').innerText = Math.round(totalRatio * 100) + '%';
+                // 更新中心上方的小字
+                const centerLabel = document.getElementById('pie-center-label');
+                if (centerLabel.previousElementSibling) {
+                    centerLabel.previousElementSibling.innerText = '负载率';
+                }
+
+                // 创建所有项目的列表行
+                data.forEach((d, idx) => {
+                    const daysPct = periodTotalDays > 0 ? d.totalDays / periodTotalDays : 0;
+                    const row = document.createElement('div');
+                    row.className = `stats-row flex items-center cursor-pointer py-1 transition-all ${d.isEmpty ? 'opacity-50' : ''}`;
+                    row.dataset.projectId = d.id;
+
+                    // 构建任务列表HTML
+                    const taskListHtml = d.tasks.length > 0
+                        ? d.tasks.map(t =>
+                            `<div class="flex items-center justify-between py-1 border-b border-gray-100 last:border-0">
+                                <span class="text-xs text-gray-700 truncate max-w-[150px]" title="${escapeHtml(t.title)}">${escapeHtml(t.title)}</span>
+                                <span class="text-xs text-gray-500 ml-2">${t.overlapDays}天</span>
+                            </div>`
+                        ).join('')
+                        : '<div class="text-xs text-gray-400 py-2">该时间段内无任务</div>';
+
+                    row.innerHTML = `
+                        <div class="flex-none w-28 sm:w-32 md:w-40">
+                            <div class="flex items-center gap-2">
+                                <span class="w-2.5 h-2.5 rounded-full" style="background-color: ${escapeHtml(d.c)}"></span>
+                                <span class="text-sm font-medium text-gray-700 truncate">${escapeHtml(d.name)}</span>
+                            </div>
+                        </div>
+                        <div class="flex-1 mx-2 sm:mx-4">
+                            <div class="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+                                <div class="h-full rounded-full transition-all" style="width: ${Math.min(daysPct * 100, 100)}%; background-color: ${escapeHtml(d.c)}"></div>
+                            </div>
+                        </div>
+                        <div class="flex-none w-20 text-right">
+                            <span class="text-sm font-semibold text-gray-900">${d.taskCount}个</span>
+                            ${d.totalDays > 0 ? `<span class="text-xs text-gray-400 ml-1">(${d.totalDays}天)</span>` : ''}
+                        </div>
+                        <!-- 悬停提示 -->
+                        <div class="stats-tooltip">
+                            <div class="text-xs font-semibold text-gray-700 mb-2 pb-2 border-b border-gray-100">
+                                ${escapeHtml(d.name)} · ${d.taskCount}个任务
+                            </div>
+                            <div class="max-h-40 overflow-y-auto">
+                                ${taskListHtml}
+                            </div>
+                            ${d.totalDays > 0 ? `
+                            <div class="text-xs text-gray-500 mt-2 pt-2 border-t border-gray-100">
+                                占时间段 ${Math.round(daysPct * 100)}% · ${d.totalDays}/${periodTotalDays} 天
+                            </div>` : ''}
+                        </div>
+                    `;
+
+                    // 列表行悬停事件（只有有任务的才触发高亮）
+                    if (!d.isEmpty) {
+                        row.addEventListener('mouseenter', () => highlightProject(d.id));
+                        row.addEventListener('mouseleave', clearHighlight);
+                    }
+
+                    list.appendChild(row);
+                });
             }
         }
 
         let currentDragState = null;
         function allowDrop(e) { e.preventDefault(); }
-        function drop(e, s) { e.preventDefault(); const t = tasks.find(x => x.id === parseInt(e.dataTransfer.getData("text/plain"))); if(t && t.status !== s) { t.status = s; saveTasks(); renderAllViews(); } }
+        function drop(e, s) { 
+            e.preventDefault(); 
+            const t = tasks.find(x => x.id == e.dataTransfer.getData("text/plain")); 
+            if(t && t.status !== 'done' && t.status !== s) { 
+                saveSnapshot('移动任务状态');
+                t.status = s; 
+                saveTasks(); 
+                renderAllViews(); 
+            } 
+        }
         function handleDrop(e, dStr) {
             e.preventDefault(); document.querySelectorAll('.drag-preview-cell').forEach(el => el.classList.remove('drag-preview-cell'));
-            const t = tasks.find(x => x.id === parseInt(e.dataTransfer.getData("text/plain"))); currentDragState = null;
-            if(t) { const diff = Math.ceil(Math.abs(new Date(t.end) - new Date(t.start)) / 86400000); t.start = dStr; const ne = new Date(dStr); ne.setDate(ne.getDate() + diff); t.end = fmtDate(ne); saveTasks(); renderAllViews(); }
+            const t = tasks.find(x => x.id == e.dataTransfer.getData("text/plain")); currentDragState = null;
+            if(t) { 
+                // 已完成任务不能拖拽调整时间
+                if (t.status === 'done') return;
+                saveSnapshot('调整任务时间');
+                const diff = dateDiffDays(t.start, t.end); 
+                t.start = dStr; 
+                const ne = new Date(dStr); 
+                ne.setDate(ne.getDate() + diff); 
+                t.end = fmtDate(ne); 
+                saveTasks(); 
+                renderAllViews(); 
+            }
         }
         
         let rState = null;
-        function initResize(e, tid, type) { e.preventDefault(); e.stopPropagation(); rState = { tid, type }; document.body.style.cursor = 'col-resize'; document.body.classList.add('select-none-all'); window.addEventListener('mousemove', rsMove); window.addEventListener('mouseup', rsUp); window.addEventListener('touchmove', rsMove); window.addEventListener('touchend', rsUp); }
-        function rsMove(e) { if(!rState) return; const el = document.elementFromPoint(e.type.includes('touch')?e.touches[0].clientX:e.clientX, e.type.includes('touch')?e.touches[0].clientY:e.clientY); const c = el?.closest('div[data-date]'); if(c) { const nd = c.getAttribute('data-date'), t = tasks.find(x => x.id === rState.tid); if(rState.type === 'start') { if(nd <= t.end && t.start !== nd) { t.start = nd; renderCalendar(); } } else { if(nd >= t.start && t.end !== nd) { t.end = nd; renderCalendar(); } } } }
-        function rsUp() { rState = null; document.body.style.cursor = ''; document.body.classList.remove('select-none-all'); window.removeEventListener('mousemove', rsMove); window.removeEventListener('mouseup', rsUp); window.removeEventListener('touchmove', rsMove); window.removeEventListener('touchend', rsUp); saveTasks(); }
+        let resizeStartState = null;
+        function initResize(e, tid, type) { 
+            const t = tasks.find(x => x.id == tid);
+            if (t && t.status === 'done') return; // 已完成任务不能调整
+            saveSnapshot('调整任务时间范围');
+            resizeStartState = { start: t.start, end: t.end };
+            e.preventDefault(); 
+            e.stopPropagation(); 
+            rState = { tid, type }; 
+            document.body.style.cursor = 'col-resize'; 
+            document.body.classList.add('select-none-all'); 
+            window.addEventListener('mousemove', rsMove); 
+            window.addEventListener('mouseup', rsUp); 
+            window.addEventListener('touchmove', rsMove); 
+            window.addEventListener('touchend', rsUp); 
+        }
+        function rsMove(e) { 
+            if(!rState) return; 
+            const el = document.elementFromPoint(e.type.includes('touch')?e.touches[0].clientX:e.clientX, e.type.includes('touch')?e.touches[0].clientY:e.clientY); 
+            const c = el?.closest('div[data-date]'); 
+            if(c) { 
+                const nd = c.getAttribute('data-date'); 
+                const t = tasks.find(x => x.id === rState.tid); 
+                if(rState.type === 'start') { 
+                    if(compareDateStr(nd, '<=', t.end) && t.start !== nd) { 
+                        t.start = nd; 
+                        renderCalendar(); 
+                    } 
+                } else { 
+                    if(compareDateStr(nd, '>=', t.start) && t.end !== nd) { 
+                        t.end = nd; 
+                        renderCalendar(); 
+                    } 
+                } 
+            } 
+        }
+        function rsUp() { 
+            rState = null; 
+            resizeStartState = null;
+            document.body.style.cursor = ''; 
+            document.body.classList.remove('select-none-all'); 
+            window.removeEventListener('mousemove', rsMove); 
+            window.removeEventListener('mouseup', rsUp); 
+            window.removeEventListener('touchmove', rsMove); 
+            window.removeEventListener('touchend', rsUp); 
+            saveTasks(); 
+        }
 
         const TouchDragManager = {
-            el: null, clone: null, sx: 0, sy: 0, timer: null,
-            init() { document.querySelectorAll('.kanban-item, .cal-task-bar').forEach(el => { if(!el.classList.contains('resize-handle')) el.addEventListener('touchstart', this.start.bind(this), {passive:false}); }); },
-            start(e) { if(e.target.classList.contains('resize-handle')) return; this.el = e.currentTarget; this.sx = e.touches[0].clientX; this.sy = e.touches[0].clientY; this.timer = setTimeout(() => this.drag(e.touches[0]), 150); this.el.addEventListener('touchmove', this.move.bind(this), {passive:false}); this.el.addEventListener('touchend', this.end.bind(this)); },
-            drag(t) { const r = this.el.getBoundingClientRect(); this.clone = this.el.cloneNode(true); this.clone.classList.add('touch-mirror'); this.clone.style.width = r.width + 'px'; this.clone.style.setProperty('--mirror-width', r.width + 'px'); this.clone.style.left = r.left + 'px'; this.clone.style.top = r.top + 'px'; document.body.appendChild(this.clone); this.el.classList.add('opacity-50'); },
-            move(e) { const t = e.touches[0]; if(Math.hypot(t.clientX-this.sx, t.clientY-this.sy)>5 && !this.clone) clearTimeout(this.timer); if(this.clone) { e.preventDefault(); this.clone.style.transform = `translate(${t.clientX-this.sx}px, ${t.clientY-this.sy}px) scale(1.02)`; if(currentView==='projects'){ document.querySelectorAll('.kanban-col').forEach(c => c.classList.remove('bg-gray-100')); const el = document.elementFromPoint(t.clientX, t.clientY)?.closest('.kanban-col'); if(el) el.classList.add('bg-gray-100'); } } },
-            end(e) { clearTimeout(this.timer); if(this.clone) { const t = e.changedTouches[0]; this.clone.style.display='none'; const el = document.elementFromPoint(t.clientX, t.clientY); this.clone.style.display='block'; if(currentView==='projects'){ const c = el?.closest('.kanban-col'); if(c) { const task = tasks.find(x => x.id == this.el.getAttribute('data-task-id')); if(task && task.status !== c.dataset.status) { task.status = c.dataset.status; saveTasks(); } } document.querySelectorAll('.kanban-col').forEach(c => c.classList.remove('bg-gray-100')); } else if(currentView==='calendar'){ const c = el?.closest('div[data-date]'); if(c) { const task = tasks.find(x => x.id == this.el.getAttribute('data-task-id')); if(task) { const d = Math.ceil(Math.abs(new Date(task.end)-new Date(task.start))/86400000); task.start = c.getAttribute('data-date'); const ne = new Date(task.start); ne.setDate(ne.getDate()+d); task.end = fmtDate(ne); saveTasks(); } } } this.clone.remove(); this.clone=null; this.el.classList.remove('opacity-50'); renderAllViews(); } this.el.removeEventListener('touchmove', this.move); this.el.removeEventListener('touchend', this.end); this.el = null; }
+            el: null, clone: null, sx: 0, sy: 0, timer: null, moveHandler: null, endHandler: null,
+            init() { 
+                document.querySelectorAll('.kanban-item, .cal-task-bar').forEach(el => { 
+                    if(!el.classList.contains('resize-handle')) {
+                        el.removeEventListener('touchstart', this.start);
+                        el.addEventListener('touchstart', this.start.bind(this), {passive:false}); 
+                    } 
+                }); 
+            },
+            start(e) { 
+                if(e.target.classList.contains('resize-handle')) return; 
+                this.el = e.currentTarget; 
+                const taskId = this.el.getAttribute('data-task-id');
+                const task = tasks.find(t => t.id == taskId);
+                // 已完成任务不能拖拽
+                if (task && task.status === 'done') {
+                    // 清理，防止残留事件
+                    this.el = null;
+                    return;
+                }
+                
+                this.sx = e.touches[0].clientX; 
+                this.sy = e.touches[0].clientY;
+                this.hasMoved = false;
+                this.timer = setTimeout(() => this.drag(e.touches[0]), 150); 
+                this.moveHandler = this.move.bind(this);
+                this.endHandler = this.end.bind(this);
+                this.el.addEventListener('touchmove', this.moveHandler, {passive:false}); 
+                this.el.addEventListener('touchend', this.endHandler); 
+            },
+            drag(t) { 
+                const r = this.el.getBoundingClientRect(); 
+                this.clone = this.el.cloneNode(true); 
+                this.clone.classList.add('touch-mirror'); 
+                this.clone.style.width = r.width + 'px'; 
+                this.clone.style.setProperty('--mirror-width', r.width + 'px'); 
+                this.clone.style.left = r.left + 'px'; 
+                this.clone.style.top = r.top + 'px'; 
+                document.body.appendChild(this.clone); 
+                this.el.classList.add('opacity-50'); 
+            },
+            move(e) { 
+                const t = e.touches[0]; 
+                const moved = Math.hypot(t.clientX-this.sx, t.clientY-this.sy) > 5;
+                if(moved) {
+                    this.hasMoved = true;
+                    if(!this.clone) clearTimeout(this.timer); 
+                }
+                if(this.clone) { 
+                    e.preventDefault(); 
+                    this.clone.style.transform = `translate(${t.clientX-this.sx}px, ${t.clientY-this.sy}px) scale(1.02)`; 
+                    if(currentView==='projects'){ 
+                        document.querySelectorAll('.kanban-col').forEach(c => c.classList.remove('bg-gray-100')); 
+                        const el = document.elementFromPoint(t.clientX, t.clientY)?.closest('.kanban-col'); 
+                        if(el) el.classList.add('bg-gray-100'); 
+                    } 
+                } 
+            },
+            end(e) { 
+                clearTimeout(this.timer);
+                // 如果没有真正开始拖拽（没有 clone），直接清理
+                if(!this.clone && !this.hasMoved) {
+                    this.el.removeEventListener('touchmove', this.moveHandler); 
+                    this.el.removeEventListener('touchend', this.endHandler); 
+                    this.el = null;
+                    return;
+                }
+                if(this.clone) { 
+                    const t = e.changedTouches[0]; 
+                    this.clone.style.display='none'; 
+                    const el = document.elementFromPoint(t.clientX, t.clientY); 
+                    this.clone.style.display='block'; 
+                    if(currentView==='projects'){ 
+                        const c = el?.closest('.kanban-col'); 
+                        if(c) { 
+                            const task = tasks.find(x => x.id == this.el.getAttribute('data-task-id')); 
+                            if(task && task.status !== c.dataset.status) { 
+                                task.status = c.dataset.status; 
+                                saveTasks(); 
+                            } 
+                        } 
+                        document.querySelectorAll('.kanban-col').forEach(c => c.classList.remove('bg-gray-100')); 
+                    } else if(currentView==='calendar'){ 
+                        const c = el?.closest('div[data-date]'); 
+                        if(c) { 
+                            const task = tasks.find(x => x.id == this.el.getAttribute('data-task-id')); 
+                            if(task) { 
+                                const d = dateDiffDays(task.start, task.end); 
+                                task.start = c.getAttribute('data-date'); 
+                                const ne = new Date(task.start); 
+                                ne.setDate(ne.getDate()+d); 
+                                task.end = fmtDate(ne); 
+                                saveTasks(); 
+                            } 
+                        } 
+                    } 
+                    this.clone.remove(); 
+                    this.clone=null; 
+                    this.el.classList.remove('opacity-50'); 
+                    renderAllViews(); 
+                } 
+                this.el.removeEventListener('touchmove', this.moveHandler); 
+                this.el.removeEventListener('touchend', this.endHandler); 
+                this.el = null; 
+            }
         };
 
         function fmtDate(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
         function formatDateDisplay(s) { const [y, m, d] = s.split('-').map(Number); return new Date(y, m-1, d).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' }); }
 
         function renderProjectOptions() {
-            const s = document.getElementById('input-project'); s.innerHTML = '';
-            projectList.forEach(p => { if(p.children?.length) { const g = document.createElement('optgroup'); g.label = p.name; g.appendChild(new Option(p.name, p.name)); p.children.forEach(c => g.appendChild(new Option(`   ${c.name}`, c.name))); s.appendChild(g); } else s.appendChild(new Option(p.name, p.name)); });
+            const s = document.getElementById('input-project');
+            const currentValue = s.value; // 保存当前选中的值
+            s.innerHTML = '';
+            projectList.forEach(p => { 
+                // 父项目作为普通选项（加粗）
+                const parentOption = new Option(p.name, p.name);
+                parentOption.style.color = p.hex;
+                parentOption.style.fontWeight = '600';
+                s.appendChild(parentOption);
+                
+                // 子项目选项（缩进，普通字重）
+                if(p.children?.length) {
+                    p.children.forEach(c => {
+                        const path = getProjectPath(p.name, c.name);
+                        const childOption = new Option(`  ${c.name}`, path);
+                        childOption.style.color = c.hex;
+                        s.appendChild(childOption);
+                    });
+                }
+            });
+            // 恢复选中的值
+            if (currentValue) s.value = currentValue;
+        }
+        
+        function updateProjectColorIndicators() {
+            const select = document.getElementById('input-project');
+            const selectedValue = select.value;
+            const color = getProjectColorByPath(selectedValue);
+            
+            // 更新快速改色按钮
+            const btn = document.getElementById('quick-color-btn');
+            const input = document.getElementById('quick-color-input');
+            if (btn) btn.style.backgroundColor = color;
+            if (input) input.value = color;
+        }
+        
+        function quickUpdateProjectColor(newColor) {
+            const select = document.getElementById('input-project');
+            const selectedValue = select.value;
+            if (!selectedValue) return;
+            
+            saveSnapshot('快速修改项目颜色');
+            
+            // 判断是父项目还是子项目
+            if (selectedValue.includes(' > ')) {
+                // 修改子项目颜色
+                const parts = selectedValue.split(' > ');
+                const parentName = parts[0];
+                const childName = parts[parts.length - 1];
+                const parent = projectList.find(p => p.name === parentName);
+                if (parent && parent.children) {
+                    const child = parent.children.find(c => c.name === childName);
+                    if (child) child.hex = newColor;
+                }
+            } else {
+                // 修改父项目颜色
+                const parent = projectList.find(p => p.name === selectedValue);
+                if (parent) parent.hex = newColor;
+            }
+            
+            saveTasks();
+            // 重新渲染下拉选项以显示新颜色
+            renderProjectOptions();
+            // 立即更新颜色按钮显示
+            const btn = document.getElementById('quick-color-btn');
+            if (btn) btn.style.backgroundColor = newColor;
+            renderAllViews();
+            showToast('项目颜色已更新');
         }
         function toggleProjectMenu() { document.getElementById('project-menu').classList.toggle('hidden'); }
-        document.addEventListener('click', e => { if (!e.target.closest('button[onclick="toggleProjectMenu()"]') && !document.getElementById('project-menu').contains(e.target)) document.getElementById('project-menu').classList.add('hidden'); });
+        document.addEventListener('click', e => { 
+            const menuBtn = document.querySelector('button[onclick*="toggleProjectMenu"]');
+            if ((!menuBtn || !menuBtn.contains(e.target)) && !document.getElementById('project-menu').contains(e.target)) {
+                document.getElementById('project-menu').classList.add('hidden'); 
+            }
+        });
         function enableProjectEditMode() { document.getElementById('project-menu').classList.add('hidden'); document.getElementById('project-view-mode').classList.add('hidden'); document.getElementById('project-edit-mode').classList.remove('hidden'); renderPEList(); }
         function closeProjectEditMode() { document.getElementById('project-edit-mode').classList.add('hidden'); document.getElementById('project-view-mode').classList.remove('hidden'); renderProjectOptions(); renderAllViews(); renderFilterListContent(); }
+        
         function renderPEList() {
-            const l = document.getElementById('project-editor-list'); l.innerHTML = '';
+            const l = document.getElementById('project-editor-list');
+            l.innerHTML = '';
             projectList.forEach(p => {
-                l.innerHTML += `<div class="group pt-2 pb-1 border-b border-gray-50"><div class="flex items-center gap-2 mb-1"><button onclick="toggleExpand('${p.id}')" class="text-gray-400 p-2"><i data-lucide="${p.expanded?'chevron-down':'chevron-right'}" class="w-4 h-4"></i></button><div class="flex-1 flex items-center gap-2"><input type="color" value="${p.hex}" onchange="updateProjectColor('${p.id}', this.value)" class="w-6 h-6 shrink-0"><input type="text" value="${p.name}" onchange="updateProjectName('${p.id}',null,this.value)" class="w-full text-sm bg-gray-50 border-transparent focus:border-gray-400 rounded px-2 py-1.5 outline-none font-medium text-gray-800"></div><button onclick="addChildToParent('${p.id}')" class="text-gray-400 p-1 hover:text-blue-500"><i data-lucide="plus" class="w-4 h-4"></i></button><button onclick="removeProjectParent('${p.id}')" class="text-gray-300 hover:text-red-500 p-2.5"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div>${p.expanded ? `<div class="ml-8 border-l border-gray-100 pl-3 space-y-2 mb-2">${(p.children||[]).map(c => `<div class="flex items-center gap-2"><input type="text" value="${c.name}" onchange="updateProjectName('${p.id}','${c.id}',this.value)" class="flex-1 text-sm bg-white border border-gray-100 focus:border-gray-400 rounded px-2 py-1.5 outline-none text-gray-600"><button onclick="removeChildItem('${p.id}','${c.id}')" class="text-gray-200 hover:text-red-500 p-2"><i data-lucide="x" class="w-4 h-4"></i></button></div>`).join('')}</div>` : ''}</div>`;
+                const safeName = escapeHtml(p.name);
+                const safeHex = escapeHtml(p.hex);
+                const safeId = escapeHtml(p.id);
+                
+                let html = `<div class="group pt-2 pb-1 border-b border-gray-50">
+                    <div class="flex items-center gap-2 mb-1">
+                        <button onclick="toggleExpand('${safeId}')" class="text-gray-400 p-2"><i data-lucide="${p.expanded?'chevron-down':'chevron-right'}" class="w-4 h-4"></i></button>
+                        <div class="flex-1 flex items-center gap-2">
+                            <input type="color" value="${safeHex}" oninput="updateProjectColor('${safeId}', this.value)" class="w-6 h-6 shrink-0">
+                            <input type="text" value="${safeName}" onchange="updateProjectName('${safeId}',null,this.value)" class="w-full text-sm bg-gray-50 border-transparent focus:border-gray-400 rounded px-2 py-1.5 outline-none font-medium text-gray-800">
+                        </div>
+                        <button onclick="addChildToParent('${safeId}')" class="text-gray-400 p-1 hover:text-blue-500"><i data-lucide="plus" class="w-4 h-4"></i></button>
+                        <button onclick="removeProjectParent('${safeId}')" class="text-gray-300 hover:text-red-500 p-2.5"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                    </div>`;
+                
+                if(p.expanded && p.children && p.children.length > 0) {
+                    html += `<div class="ml-8 border-l border-gray-100 pl-3 space-y-2 mb-2">`;
+                    p.children.forEach(c => {
+                        const safeChildName = escapeHtml(c.name);
+                        const safeChildId = escapeHtml(c.id);
+                        const safeChildHex = escapeHtml(c.hex || p.hex);
+                        html += `<div class="flex items-center gap-2">
+                            <input type="color" value="${safeChildHex}" oninput="updateChildColor('${safeId}','${safeChildId}',this.value)" class="w-5 h-5 shrink-0">
+                            <input type="text" value="${safeChildName}" onchange="updateProjectName('${safeId}','${safeChildId}',this.value)" class="flex-1 text-sm bg-white border border-gray-100 focus:border-gray-400 rounded px-2 py-1.5 outline-none text-gray-600">
+                            <button onclick="removeChildItem('${safeId}','${safeChildId}')" class="text-gray-200 hover:text-red-500 p-2"><i data-lucide="x" class="w-4 h-4"></i></button>
+                        </div>`;
+                    });
+                    html += `</div>`;
+                }
+                html += `</div>`;
+                l.insertAdjacentHTML('beforeend', html);
             });
             if(window.lucide) lucide.createIcons();
         }
-        function toggleExpand(id) { const p = projectList.find(x => x.id === id); if(p) { p.expanded = !p.expanded; renderPEList(); } }
-        function addProjectParent() { projectList.push({ id: 'p'+Date.now(), name: '新项目', hex: '#6b7280', children: [], expanded: true }); saveTasks(); renderPEList(); }
-        function addChildToParent(id) { const p = projectList.find(x => x.id === id); if(p) { p.expanded = true; if(!p.children) p.children = []; p.children.push({ id: 'c'+Date.now(), name: '新子项' }); saveTasks(); renderPEList(); } }
-        function removeProjectParent(id) { setTimeout(() => { if(confirm('删除此项目组？')) { projectList = projectList.filter(p => p.id !== id); saveTasks(); renderPEList(); } }, 10); }
-        function removeChildItem(pId, cId) { const p = projectList.find(x => x.id === pId); if(p) { p.children = p.children.filter(c => c.id !== cId); saveTasks(); renderPEList(); } }
-        function updateProjectName(pId, cId, val) { const p = projectList.find(x => x.id === pId); if(!p) return; const t = cId ? p.children.find(x => x.id === cId) : p; const old = t.name; t.name = val; tasks.forEach(task => { if(task.project === old) task.project = val; }); saveTasks(); }
-        function updateProjectColor(pId, val) { const p = projectList.find(x => x.id === pId); if(p) { p.hex = val; saveTasks(); renderPEList(); } }
+        
+        function toggleExpand(id) { const p = projectList.find(x => x.id == id); if(p) { p.expanded = !p.expanded; renderPEList(); } }
+        function addProjectParent() { 
+            saveSnapshot('添加父项目');
+            projectList.push({ id: generateId('p'), name: '新项目', hex: '#9ca3af', children: [], expanded: true }); 
+            saveTasks(); renderPEList(); 
+        }
+        function addChildToParent(id) { 
+            const p = projectList.find(x => x.id == id); 
+            if(p) { 
+                saveSnapshot('添加子项目');
+                p.expanded = true; 
+                if(!p.children) p.children = []; 
+                p.children.push({ id: generateId('c'), name: '新子项', hex: '#9ca3af' }); // 默认灰色
+                saveTasks(); renderPEList(); 
+            } 
+        }
+        function removeProjectParent(id) { setTimeout(() => { if(confirm('删除此项目组？')) { saveSnapshot('删除父项目'); projectList = projectList.filter(p => p.id !== id); saveTasks(); renderPEList(); } }, 10); }
+        function removeChildItem(pId, cId) { 
+            const p = projectList.find(x => x.id === pId); 
+            if(p) { 
+                saveSnapshot('删除子项目');
+                p.children = p.children.filter(c => c.id !== cId); 
+                saveTasks(); renderPEList(); 
+            } 
+        }
+        
+        function updateProjectName(pId, cId, val) { 
+            const p = projectList.find(x => x.id === pId); 
+            if(!p) return; 
+            const t = cId ? p.children.find(x => x.id === cId) : p; 
+            if (!t || t.name === val) return;
+            saveSnapshot(cId ? '修改子项目名称' : '修改父项目名称');
+            const oldName = t.name; 
+            const newName = val;
+            t.name = newName; 
+            
+            tasks.forEach(task => {
+                if (cId) {
+                    const oldPath = getProjectPath(p.name, oldName);
+                    const newPath = getProjectPath(p.name, newName);
+                    if(task.project === oldPath) {
+                        task.project = newPath;
+                    }
+                } else {
+                    if (task.project === oldName) {
+                        task.project = newName;
+                    } else if (task.project.startsWith(oldName + ' > ')) {
+                        task.project = task.project.replace(oldName + ' > ', newName + ' > ');
+                    }
+                }
+            }); 
+            saveTasks(); 
+        }
+        
+        function updateProjectColor(pId, val) {
+            const p = projectList.find(x => x.id === pId);
+            if(p && p.hex !== val) {
+                saveSnapshot('修改父项目颜色');
+                p.hex = val;
+                saveTasks();
+                renderAllViews();
+            }
+        }
+        function updateChildColor(pId, cId, val) {
+            const p = projectList.find(x => x.id === pId);
+            if(p) {
+                const c = (p.children||[]).find(x => x.id === cId);
+                if(c && c.hex !== val) {
+                    saveSnapshot('修改子项目颜色');
+                    c.hex = val;
+                    saveTasks();
+                    renderAllViews();
+                }
+            }
+        }
 
         let modalCloseTimer = null;
         function openModal(id) {
@@ -889,49 +1985,173 @@
             b.classList.remove('hidden'); void b.offsetWidth; b.classList.remove('opacity-0'); p.classList.remove('translate-x-full');
             
             if (id) {
-                const t = tasks.find(x => x.id === id); document.getElementById('edit-task-id').value = id; document.getElementById('modal-title').innerText = "任务详情"; document.getElementById('btn-delete-task').classList.remove('hidden');
-                document.getElementById('input-title').value = t.title; document.getElementById('input-project').value = t.project; document.getElementById('input-desc').value = t.desc||''; document.getElementById('input-start').value = t.start; document.getElementById('input-end').value = t.end;
-                document.getElementById('input-color').value = t.color || getProjectColor(t.project);
+                const t = tasks.find(x => x.id == id); 
+                document.getElementById('edit-task-id').value = id; 
+                document.getElementById('modal-title').innerText = "任务详情"; 
+                document.getElementById('btn-delete-task').classList.remove('hidden');
+                document.getElementById('input-title').value = t.title; 
+                document.getElementById('input-project').value = t.project; 
+                document.getElementById('input-desc').value = t.desc||''; 
+                document.getElementById('input-start').value = t.start; 
+                document.getElementById('input-end').value = t.end;
                 document.getElementsByName('status').forEach(r => r.checked = r.value === t.status);
             } else {
-                document.getElementById('edit-task-id').value = ''; document.getElementById('modal-title').innerText = "新建任务"; document.getElementById('btn-delete-task').classList.add('hidden');
-                document.getElementById('input-title').value = ''; document.getElementById('input-desc').value = ''; 
-                const d = fmtDate(new Date()); document.getElementById('input-start').value = d; document.getElementById('input-end').value = d; document.getElementsByName('status')[0].checked = true;
-                const defaultProj = document.getElementById('input-project').value;
-                document.getElementById('input-color').value = getProjectColor(defaultProj);
+                document.getElementById('edit-task-id').value = ''; 
+                document.getElementById('modal-title').innerText = "新建任务"; 
+                document.getElementById('btn-delete-task').classList.add('hidden');
+                document.getElementById('input-title').value = ''; 
+                document.getElementById('input-desc').value = ''; 
+                const d = fmtDate(new Date()); 
+                document.getElementById('input-start').value = d; 
+                document.getElementById('input-end').value = d; 
+                document.getElementsByName('status')[0].checked = true;
+                updateProjectColorIndicators();
+                updateSyncParentButton();
                 setTimeout(() => document.getElementById('input-title').focus(), 100);
             }
         }
-        function handleProjectChange(pName) { document.getElementById('input-color').value = getProjectColor(pName); }
+        function handleProjectChange(pName) { 
+            // 直接使用传入的值更新颜色指示器
+            const color = getProjectColorByPath(pName);
+            const btn = document.getElementById('quick-color-btn');
+            const input = document.getElementById('quick-color-input');
+            if (btn) btn.style.backgroundColor = color;
+            if (input) input.value = color;
+            
+            // 更新颜色菜单中的"与父项目同步"按钮可见性
+            updateSyncParentButton();
+        }
+        
+        function toggleColorMenu() {
+            const menu = document.getElementById('color-menu');
+            const isHidden = menu.classList.contains('hidden');
+            
+            // 关闭其他菜单
+            document.getElementById('project-menu').classList.add('hidden');
+            
+            if (isHidden) {
+                menu.classList.remove('hidden');
+                updateSyncParentButton();
+            } else {
+                menu.classList.add('hidden');
+            }
+        }
+        
+        function updateSyncParentButton() {
+            const select = document.getElementById('input-project');
+            const selectedValue = select.value;
+            const syncBtn = document.getElementById('sync-parent-color-btn');
+            const syncDot = document.getElementById('sync-parent-dot');
+            
+            if (!selectedValue || !syncBtn) return;
+            
+            // 如果是子项目，显示"与父项目同步"按钮
+            if (selectedValue.includes(' > ')) {
+                const parts = selectedValue.split(' > ');
+                const parentName = parts[0];
+                const parent = projectList.find(p => p.name === parentName);
+                if (parent) {
+                    syncDot.style.backgroundColor = parent.hex;
+                    syncBtn.classList.remove('hidden');
+                }
+            } else {
+                syncBtn.classList.add('hidden');
+            }
+        }
+        
+        function resetProjectColor() {
+            quickUpdateProjectColor('#9ca3af');
+            document.getElementById('color-menu').classList.add('hidden');
+        }
+        
+        function syncParentColor() {
+            const select = document.getElementById('input-project');
+            const selectedValue = select.value;
+            if (!selectedValue || !selectedValue.includes(' > ')) return;
+            
+            const parts = selectedValue.split(' > ');
+            const parentName = parts[0];
+            const parent = projectList.find(p => p.name === parentName);
+            if (parent) {
+                quickUpdateProjectColor(parent.hex);
+            }
+            document.getElementById('color-menu').classList.add('hidden');
+        }
+        
+        // 点击其他地方关闭颜色菜单
+        document.addEventListener('click', e => {
+            const colorMenu = document.getElementById('color-menu');
+            const colorBtn = document.getElementById('quick-color-btn');
+            if (colorMenu && !colorMenu.contains(e.target) && !colorBtn.contains(e.target)) {
+                colorMenu.classList.add('hidden');
+            }
+        });
+
         function closeAllModals() { closeModal(); closeImportModal(); }
         function closeModal() {
-            const b = document.getElementById('modal-backdrop'); const p = document.getElementById('modal-panel'); p.classList.add('translate-x-full'); 
-            if(document.getElementById('modal-import').classList.contains('hidden')) { b.classList.add('opacity-0'); modalCloseTimer = setTimeout(() => { b.classList.add('hidden'); }, 300); }
+            const b = document.getElementById('modal-backdrop'); 
+            const p = document.getElementById('modal-panel'); 
+            p.classList.add('translate-x-full'); 
+            if(document.getElementById('modal-import').classList.contains('hidden')) { 
+                b.classList.add('opacity-0'); 
+                modalCloseTimer = setTimeout(() => { b.classList.add('hidden'); }, 300); 
+            }
         }
         function openImportModal() {
             if(modalCloseTimer) { clearTimeout(modalCloseTimer); modalCloseTimer = null; }
             document.getElementById('modal-panel').classList.add('translate-x-full');
-            const b = document.getElementById('modal-backdrop'); const m = document.getElementById('modal-import'); const c = document.getElementById('import-modal-content');
+            const b = document.getElementById('modal-backdrop'); 
+            const m = document.getElementById('modal-import'); 
+            const c = document.getElementById('import-modal-content');
             b.classList.remove('hidden'); void b.offsetWidth; b.classList.remove('opacity-0'); m.classList.remove('hidden');
             setTimeout(() => { c.classList.remove('scale-95', 'opacity-0'); c.classList.add('scale-100', 'opacity-100'); }, 10);
             if(window.innerWidth < 768) { const s = document.getElementById('main-sidebar'); if (!s.classList.contains('-translate-x-full')) toggleSidebar(); }
         }
         function closeImportModal() {
-             const b = document.getElementById('modal-backdrop'); const m = document.getElementById('modal-import'); const c = document.getElementById('import-modal-content');
+             const b = document.getElementById('modal-backdrop'); 
+             const m = document.getElementById('modal-import'); 
+             const c = document.getElementById('import-modal-content');
              c.classList.remove('scale-100', 'opacity-100'); c.classList.add('scale-95', 'opacity-0');
-             if(document.getElementById('modal-panel').classList.contains('translate-x-full')) { b.classList.add('opacity-0'); modalCloseTimer = setTimeout(() => { m.classList.add('hidden'); b.classList.add('hidden'); document.getElementById('import-json-area').value = ''; }, 200); } else { setTimeout(() => { m.classList.add('hidden'); document.getElementById('import-json-area').value = ''; }, 200); }
+             if(document.getElementById('modal-panel').classList.contains('translate-x-full')) { 
+                 b.classList.add('opacity-0'); 
+                 modalCloseTimer = setTimeout(() => { m.classList.add('hidden'); b.classList.add('hidden'); document.getElementById('import-json-area').value = ''; }, 200); 
+             } else { 
+                 setTimeout(() => { m.classList.add('hidden'); document.getElementById('import-json-area').value = ''; }, 200); 
+             }
         }
         function autoSaveTask() {
             const id = document.getElementById('edit-task-id').value;
-            if(!id) return;
+            const title = document.getElementById('input-title').value;
+            
+            // 新建任务时，如果有标题则自动创建
+            if(!id) {
+                if(!title) return; // 没有标题不创建
+                saveSnapshot('自动保存新建任务');
+                const newTask = {
+                    id: generateId('t'),
+                    title: title,
+                    project: document.getElementById('input-project').value,
+                    desc: document.getElementById('input-desc').value,
+                    start: document.getElementById('input-start').value,
+                    end: document.getElementById('input-end').value,
+                    status: document.querySelector('input[name="status"]:checked')?.value || 'todo'
+                };
+                tasks.unshift(newTask);
+                document.getElementById('edit-task-id').value = newTask.id; // 设置为编辑模式
+                saveTasks();
+                renderAllViews();
+                return;
+            }
+            
+            // 编辑已有任务
             const t = tasks.find(x => x.id == id);
             if(t) {
-                t.title = document.getElementById('input-title').value;
+                saveSnapshot('自动保存任务');
+                t.title = title;
                 t.project = document.getElementById('input-project').value;
                 t.desc = document.getElementById('input-desc').value;
                 t.start = document.getElementById('input-start').value;
                 t.end = document.getElementById('input-end').value;
-                t.color = document.getElementById('input-color').value;
                 const statusEl = document.querySelector('input[name="status"]:checked');
                 if(statusEl) t.status = statusEl.value;
                 saveTasks();
@@ -939,13 +2159,48 @@
             }
         }
         function saveTask() {
-            const id = document.getElementById('edit-task-id').value, title = document.getElementById('input-title').value; if(!title) return;
-            const data = { title, project: document.getElementById('input-project').value, desc: document.getElementById('input-desc').value, start: document.getElementById('input-start').value, end: document.getElementById('input-end').value, status: document.querySelector('input[name="status"]:checked').value, color: document.getElementById('input-color').value };
-            if(id) { Object.assign(tasks.find(t => t.id == id), data); } else { tasks.unshift({ id: Date.now(), ...data }); }
+            const id = document.getElementById('edit-task-id').value, 
+                  title = document.getElementById('input-title').value; 
+            if(!title) return;
+            const data = { 
+                title, 
+                project: document.getElementById('input-project').value, 
+                desc: document.getElementById('input-desc').value, 
+                start: document.getElementById('input-start').value, 
+                end: document.getElementById('input-end').value, 
+                status: document.querySelector('input[name="status"]:checked').value
+                // 颜色不再存储在任务中，动态从项目获取
+            };
+            if(id) { 
+                saveSnapshot('编辑任务');
+                const t = tasks.find(t => t.id == id);
+                // 保留原有颜色字段（向后兼容），但新逻辑不依赖它
+                Object.assign(t, data); 
+            } else { 
+                saveSnapshot('新建任务');
+                tasks.unshift({ id: generateId('t'), ...data }); 
+            }
             saveTasks(); closeModal(); renderAllViews();
         }
-        function deleteCurrentTask() { const id = document.getElementById('edit-task-id').value; setTimeout(() => { if(id && confirm("删除此任务？")) { tasks = tasks.filter(t => t.id != id); saveTasks(); closeModal(); renderAllViews(); } }, 10); }
-        function toggleTaskStatus(id) { const t = tasks.find(x => x.id === id); if(t) { t.status = t.status === 'done' ? 'todo' : 'done'; saveTasks(); renderAllViews(); } }
+        function deleteCurrentTask() { 
+            const id = document.getElementById('edit-task-id').value; 
+            setTimeout(() => { 
+                if(id && confirm("删除此任务？")) { 
+                    saveSnapshot('删除任务');
+                    tasks = tasks.filter(t => t.id != id); 
+                    saveTasks(); closeModal(); renderAllViews(); 
+                } 
+            }, 10); 
+        }
+        function toggleTaskStatus(id) { 
+            // 切换状态不需要撤销（可以再次点击还原）
+            const t = tasks.find(x => x.id == id); 
+            if(t) { 
+                t.status = t.status === 'done' ? 'todo' : 'done'; 
+                saveTasks(); 
+                renderAllViews(); 
+            } 
+        }
         
         function getProjectHierarchy(pName) {
             for (let p of projectList) {
@@ -961,15 +2216,17 @@
             const rel = getFilteredTasks().filter(t => t.start <= e && t.end >= s);
             const grps = {};
             rel.forEach(t => { 
-                const h = getProjectHierarchy(t.project);
-                const key = h.parent;
+                const parentName = getParentNameFromPath(t.project);
+                const childName = getDisplayNameFromPath(t.project);
+                const key = parentName;
                 if(!grps[key]) grps[key] = {d:0, ts:[]}; 
-                const d = Math.ceil(Math.abs(new Date(t.end)-new Date(t.start))/86400000)+1; 
+                const d = dateDiffDays(t.start, t.end) + 1; 
                 grps[key].d += d; 
-                grps[key].ts.push({...t, days:d, fullPath: h.child ? `${h.parent} > ${h.child}` : h.parent}); 
+                grps[key].ts.push({...t, days:d, fullPath: childName !== parentName ? `${parentName} > ${childName}` : parentName}); 
             });
             let md = `📅 **Nexus 报告** (${s} 至 ${e})\n\n### 概览\n| 项目组 | 任务 | 总人天 |\n| :--- | :--- | :--- |\n`;
-            Object.keys(grps).forEach(p => md += `| ${p} | ${grps[p].ts.length} | ${grps[p].d} |\n`); md += `\n---\n### 详情\n`;
+            Object.keys(grps).forEach(p => md += `| ${p} | ${grps[p].ts.length} | ${grps[p].d} |\n`); 
+            md += `\n---\n### 详情\n`;
             Object.keys(grps).forEach(p => { 
                 md += `\n**${p}**\n| 任务 | 项目路径 | 状态 | 时长 |\n| :--- | :--- | :--- | :--- |\n`; 
                 grps[p].ts.forEach(t => md += `| ${t.title} | ${t.fullPath} | ${t.status==='done'?'✅':'⭕'} | ${t.days}天 |\n`); 
@@ -978,8 +2235,15 @@
         }
 
         function copyAIPrompt() {
-            const today = fmtDate(new Date()); let projects = [];
-            projectList.forEach(p => { if(p.children && p.children.length > 0) p.children.forEach(c => projects.push(`${p.name} - ${c.name}`)); else projects.push(p.name); });
+            const today = fmtDate(new Date()); 
+            let projects = [];
+            projectList.forEach(p => { 
+                if(p.children && p.children.length > 0) {
+                    p.children.forEach(c => projects.push(`${p.name} > ${c.name}`));
+                } else {
+                    projects.push(p.name); 
+                } 
+            });
             const prompt = `我正在使用 Nexus 任务管理软件。我需要你作为一个专业的项目经理，帮助我将一段非结构化的项目描述拆解为具体的任务。当前日期: ${today}。现有的项目分类: [${projects.join(', ')}]。请遵循以下规则: 1. 分析我的描述，将其拆解为多个具体的可执行任务。2. 为每个任务分配最合适的现有项目分类（必须严格匹配上述列表中的名称，如果只能匹配父类，请使用父类名称）。3. 估算合理的开始时间和结束时间（格式 YYYY-MM-DD）。4. 状态只能是: "todo" (待办), "inprogress" (进行中), "done" (已完成)。5. 直接输出 JSON 格式代码，不要包含任何 Markdown 格式，只返回纯文本 JSON 数组。结构: [{"title":"任务名称","desc":"描述","start":"YYYY-MM-DD","end":"YYYY-MM-DD","project":"项目名","status":"todo"}]。`;
             navigator.clipboard.writeText(prompt).then(() => showToast("Prompt 已复制，请粘贴给 AI"));
         }
@@ -987,8 +2251,30 @@
             const raw = document.getElementById('import-json-area').value;
             try {
                 const arr = JSON.parse(raw); if (!Array.isArray(arr)) throw new Error("输入必须是 JSON 数组");
-                let count = 0; arr.forEach(item => { if (item.title && item.start && item.end) { let pName = item.project; tasks.unshift({ id: Date.now() + Math.floor(Math.random() * 1000), title: item.title, desc: item.desc || '', start: item.start, end: item.end, project: pName || '待办中心', status: ['todo', 'inprogress', 'done'].includes(item.status) ? item.status : 'todo', color: getProjectColor(pName) }); count++; } });
-                if(count > 0) { saveTasks(); renderAllViews(); closeImportModal(); showToast(`成功导入 ${count} 个任务`); } else { alert("未找到有效的任务数据"); }
+                let count = 0; 
+                const importTasks = [];
+                arr.forEach(item => { 
+                    if (item.title && item.start && item.end) { 
+                        let pName = item.project; 
+                        importTasks.push({ 
+                            id: generateId('t'), 
+                            title: item.title, 
+                            desc: item.desc || '', 
+                            start: item.start, 
+                            end: item.end, 
+                            project: pName || '待办中心', 
+                            status: ['todo', 'inprogress', 'done'].includes(item.status) ? item.status : 'todo'
+                            // 颜色从项目动态获取，不存储在任务中
+                        }); 
+                        count++; 
+                    } 
+                });
+                if(count > 0) { 
+                    saveSnapshot('导入任务');
+                    tasks.unshift(...importTasks);
+                    saveTasks(); renderAllViews(); closeImportModal(); showToast(`成功导入 ${count}  个任务`); 
+                } 
+                else { alert("未找到有效的任务数据"); }
             } catch (e) { alert("JSON 解析失败: " + e.message); }
         }
         function showToast(msg) { const t = document.getElementById('toast'); document.getElementById('toast-msg').innerText = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3000); }
