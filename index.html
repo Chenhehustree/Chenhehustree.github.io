@@ -3,6 +3,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Nexus 任务管理器</title>
+    <meta name="version" content="1.1">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -364,22 +365,42 @@
         </div>
 
         <div id="view-stats" class="hidden flex-1 flex flex-col overflow-auto fade-in p-4 sm:p-8 bg-gray-50/50">
-            <div class="max-w-5xl mx-auto w-full space-y-8 pb-10">
+            <div class="max-w-5xl mx-auto w-full space-y-6 pb-10">
                 <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div><h1 class="text-2xl font-semibold text-gray-900 tracking-tight mb-1">项目洞察</h1><p class="text-sm text-gray-500 flex items-center gap-2">查看当前任务负载分布。</p></div>
                     <div class="flex flex-wrap items-center gap-3">
-                         <div class="flex items-center space-x-2 bg-white px-2 py-1 rounded-lg border border-gray-200 shadow-sm">
-                            <input type="date" id="stats-start-date" class="text-xs border-none outline-none text-gray-600 bg-transparent font-medium p-0 w-24" onchange="updateStatsFromInputs()">
-                            <span class="text-gray-300">-</span>
-                            <input type="date" id="stats-end-date" class="text-xs border-none outline-none text-gray-600 bg-transparent font-medium p-0 w-24" onchange="updateStatsFromInputs()">
+                        <button onclick="toggleStatsSettings()" class="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-900 bg-white px-3 py-1.5 rounded-lg border border-gray-200 shadow-sm transition-colors">
+                            <i data-lucide="settings" class="w-3.5 h-3.5"></i>
+                            <span>工时设置</span>
+                        </button>
+                        <button onclick="cleanupEmptyProjects()" class="text-xs text-gray-400 hover:text-red-500 transition-colors flex items-center gap-1" title="清理所有没有任务的空项目">
+                            <i data-lucide="trash-2" class="w-3 h-3"></i> 清理空项目
+                        </button>
+                        <button onclick="clearAllData()" class="text-xs text-gray-400 hover:text-red-600 transition-colors flex items-center gap-1" title="清除所有数据重新开始">
+                            <i data-lucide="refresh-cw" class="w-3 h-3"></i> 重置数据
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- 工时设置面板（可折叠） -->
+                <div id="stats-settings-panel" class="hidden bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                    <div class="flex items-center justify-between mb-3">
+                        <h4 class="text-sm font-medium text-gray-900">每日工时配置</h4>
+                        <button onclick="saveStatsSettings()" class="text-xs bg-gray-900 text-white px-3 py-1.5 rounded-md hover:bg-gray-800 transition-colors">保存</button>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs text-gray-500 mb-1.5">每日标准工作时长（小时）</label>
+                            <input type="number" id="setting-standard-hours" value="8" min="1" max="24" class="w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-lg p-2 outline-none focus:border-gray-900">
                         </div>
-                        <div class="bg-white p-1 rounded-lg border border-gray-200 flex shadow-sm overflow-x-auto">
-                            <button onclick="setStatsPeriod('today')" id="stats-btn-today" class="px-3 py-1 text-xs font-medium rounded-md transition-all whitespace-nowrap">今天</button>
-                            <button onclick="setStatsPeriod('week')" id="stats-btn-week" class="px-3 py-1 text-xs font-medium rounded-md transition-all whitespace-nowrap">本周</button>
-                            <button onclick="setStatsPeriod('month')" id="stats-btn-month" class="px-3 py-1 text-xs font-medium rounded-md transition-all whitespace-nowrap">本月</button>
+                        <div>
+                            <label class="block text-xs text-gray-500 mb-1.5">每日加班时长（小时）</label>
+                            <input type="number" id="setting-overtime-hours" value="2" min="0" max="24" class="w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-lg p-2 outline-none focus:border-gray-900">
                         </div>
                     </div>
                 </div>
+                
+                <!-- 工作时长统计卡片 -->
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
                         <div class="flex items-center space-x-2 text-gray-500 mb-2"><i data-lucide="layers" class="w-4 h-4"></i><span class="text-xs font-medium uppercase tracking-wide">活跃项目</span></div>
@@ -390,24 +411,79 @@
                         <div class="text-3xl font-bold text-gray-900 tracking-tight" id="stat-total-days">0</div>
                     </div>
                     <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
-                         <div class="flex items-center space-x-2 text-gray-500 mb-2"><i data-lucide="check-circle" class="w-4 h-4"></i><span class="text-xs font-medium uppercase tracking-wide">总人天</span></div>
-                        <div class="text-3xl font-bold text-gray-900 tracking-tight" id="stat-task-count">0</div>
+                         <div class="flex items-center space-x-2 text-gray-500 mb-2"><i data-lucide="briefcase" class="w-4 h-4"></i><span class="text-xs font-medium uppercase tracking-wide">总工作时长</span></div>
+                        <div class="text-3xl font-bold text-gray-900 tracking-tight" id="stat-task-count">0h</div>
                     </div>
                 </div>
+                
+                <!-- 双层圆环工作统计 -->
                 <div class="bg-white p-6 sm:p-8 rounded-xl border border-gray-200 shadow-sm">
-                    <div class="flex items-center justify-between mb-8"><h3 class="font-medium text-gray-900">工作负载分布</h3><span class="text-xs text-gray-400">悬停查看详情</span></div>
+                    <div class="flex items-center justify-between mb-6">
+                        <div>
+                            <h3 class="font-medium text-gray-900">工作时长统计</h3>
+                            <p class="text-xs text-gray-400 mt-1">外圈：实际工作占比 &nbsp;|&nbsp; 内圈：加班比例</p>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-3">
+                            <div class="flex items-center space-x-2 bg-white px-2 py-1 rounded-lg border border-gray-200 shadow-sm">
+                                <input type="date" id="stats-start-date" class="text-xs border-none outline-none text-gray-600 bg-transparent font-medium p-0 w-24" onchange="updateStatsFromInputs()">
+                                <span class="text-gray-300">-</span>
+                                <input type="date" id="stats-end-date" class="text-xs border-none outline-none text-gray-600 bg-transparent font-medium p-0 w-24" onchange="updateStatsFromInputs()">
+                            </div>
+                            <div class="bg-white p-1 rounded-lg border border-gray-200 flex shadow-sm overflow-x-auto">
+                                <button onclick="setStatsPeriod('today')" id="stats-btn-today" class="px-3 py-1 text-xs font-medium rounded-md transition-all whitespace-nowrap">今天</button>
+                                <button onclick="setStatsPeriod('week')" id="stats-btn-week" class="px-3 py-1 text-xs font-medium rounded-md transition-all whitespace-nowrap">本周</button>
+                                <button onclick="setStatsPeriod('month')" id="stats-btn-month" class="px-3 py-1 text-xs font-medium rounded-md transition-all whitespace-nowrap">本月</button>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <div class="flex flex-col md:flex-row items-center gap-10 md:gap-16">
+                        <!-- 双层圆环 -->
                         <div class="relative w-56 h-56 shrink-0 pie-entrance z-10 overflow-visible">
                             <svg id="stats-pie-chart" class="w-full h-full overflow-visible" viewBox="-10 -10 220 220">
+                                <!-- 外圈背景 -->
                                 <circle cx="100" cy="100" r="90" fill="none" stroke="#e5e7eb" stroke-width="20"/>
+                                <!-- 内圈背景 -->
+                                <circle cx="100" cy="100" r="65" fill="none" stroke="#f3f4f6" stroke-width="15"/>
+                                <!-- 实际进度 -->
                                 <g id="pie-arcs"></g>
                             </svg>
-                            <div class="absolute inset-0 m-auto w-32 h-32 bg-white rounded-full flex items-center justify-center shadow-sm pointer-events-none">
-                                <div class="text-center"><div class="text-xs text-gray-400 font-medium uppercase tracking-wide mb-0.5">任务数</div><div class="text-2xl font-bold text-gray-900 tracking-tight" id="pie-center-label">0</div></div>
+                            <!-- 中心信息 -->
+                            <div class="absolute inset-0 m-auto w-28 h-28 bg-white rounded-full flex items-center justify-center shadow-sm pointer-events-none">
+                                <div class="text-center">
+                                    <div class="text-xs text-gray-400 font-medium uppercase tracking-wide mb-0.5" id="pie-center-label">工作时长</div>
+                                    <div class="text-xl font-bold text-gray-900 tracking-tight" id="pie-center-hours">0h</div>
+                                    <div class="text-[10px] text-gray-400 mt-0.5" id="pie-center-detail">目标 0h</div>
+                                </div>
+                            </div>
+                            <!-- 警示标记（超过上限时显示） -->
+                            <div id="overtime-warning" class="hidden absolute -top-2 -right-2 w-8 h-8 bg-red-500 rounded-full flex items-center justify-center shadow-lg">
+                                <i data-lucide="alert-triangle" class="w-4 h-4 text-white"></i>
                             </div>
                             <div id="pie-tooltip" class="pie-tooltip"></div>
                         </div>
-                        <div class="flex-1 w-full space-y-4 pb-24 overflow-hidden" id="stats-project-list"></div>
+                        
+                        <!-- 项目列表 -->
+                        <div class="flex-1 w-full space-y-2 pb-4 overflow-hidden" id="stats-project-list"></div>
+                    </div>
+                </div>
+                
+                <!-- 生活全景（底部简化版） -->
+                <div class="bg-white p-3 rounded-xl border border-gray-200 shadow-sm">
+                    <div class="flex items-center gap-3 text-xs text-gray-600">
+                        <span class="text-gray-400 shrink-0">时间分布:</span>
+                        <div class="flex-1 flex items-center gap-2">
+                            <div class="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden flex">
+                                <div id="life-standard-bar" class="h-full bg-blue-500 transition-all" style="width: 0%"></div>
+                                <div id="life-overtime-bar" class="h-full bg-orange-400 transition-all" style="width: 0%"></div>
+                                <div id="life-other-bar" class="h-full bg-gray-300 transition-all" style="width: 100%"></div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3 shrink-0">
+                            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-blue-500"></span>标准<span id="life-standard-text">0h</span></span>
+                            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-orange-400"></span>加班<span id="life-overtime-text">0h</span></span>
+                            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-gray-300"></span>其他<span id="life-other-text">0h</span></span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -473,9 +549,33 @@
                         <div class="flex justify-end mt-3"><button type="button" onclick="closeProjectEditMode()" class="text-xs bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-md shadow-sm font-medium">完成</button></div>
                     </div>
                 </div>
-                <div class="grid grid-cols-2 gap-6">
-                    <div><label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">开始日期</label><input id="input-start" onchange="autoSaveTask()" type="date" class="w-full bg-white border border-gray-200 text-gray-900 text-sm rounded-lg focus:ring-1 focus:ring-gray-900 outline-none block p-2.5"></div>
-                    <div><label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">截止日期</label><input id="input-end" onchange="autoSaveTask()" type="date" class="w-full bg-white border border-gray-200 text-gray-900 text-sm rounded-lg focus:ring-1 focus:ring-gray-900 outline-none block p-2.5"></div>
+                <!-- 开始时间 -->
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">开始时间</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <input id="input-start-date" onchange="autoSaveTask(); validateDateTime()" type="date" class="w-full bg-white border border-gray-200 text-gray-900 text-sm rounded-lg focus:ring-1 focus:ring-gray-900 outline-none block p-2.5">
+                        </div>
+                        <div>
+                            <select id="input-start-time" onchange="autoSaveTask(); validateDateTime()" class="w-full bg-white border border-gray-200 text-gray-900 text-sm rounded-lg focus:ring-1 focus:ring-gray-900 outline-none block p-2.5">
+                                <!-- 时间选项由JS生成 -->
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <!-- 结束时间 -->
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">结束时间</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <input id="input-end-date" onchange="autoSaveTask(); validateDateTime()" type="date" class="w-full bg-white border border-gray-200 text-gray-900 text-sm rounded-lg focus:ring-1 focus:ring-gray-900 outline-none block p-2.5">
+                        </div>
+                        <div>
+                            <select id="input-end-time" onchange="autoSaveTask(); validateDateTime()" class="w-full bg-white border border-gray-200 text-gray-900 text-sm rounded-lg focus:ring-1 focus:ring-gray-900 outline-none block p-2.5">
+                                <!-- 时间选项由JS生成 -->
+                            </select>
+                        </div>
+                    </div>
                 </div>
                 <div><label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">描述</label><textarea id="input-desc" oninput="autoSaveTask()" rows="4" placeholder="添加任务详情..." class="w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-lg focus:ring-1 focus:ring-gray-900 outline-none block p-2.5 resize-none placeholder:text-gray-400"></textarea></div>
                 <div>
@@ -494,7 +594,7 @@
         </div>
     </div>
 
-    <div id="modal-import" class="fixed inset-0 z-50 hidden flex items-center justify-center pointer-events-none">
+    <div id="modal-import" class="fixed inset-0 z-50 hidden flex items-center justify-center">
         <div class="bg-white w-full max-w-2xl mx-4 rounded-xl shadow-2xl border border-gray-100 overflow-hidden flex flex-col pointer-events-auto transform scale-95 opacity-0 transition-all duration-200" id="import-modal-content">
             <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-white">
                 <div class="flex items-center gap-2"><i data-lucide="file-json" class="w-5 h-5 text-gray-700"></i><h3 class="text-sm font-semibold text-gray-900">导入 AI 生成任务</h3></div>
@@ -649,33 +749,28 @@
         // ==================== 应用代码 ====================
 
         const STORAGE_KEY = 'nexus_tasks';
-        const defaultTasks = (() => {
-            const now = new Date();
-            const fmt = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-            const today = fmt(now);
-            const tomorrowDate = new Date(now);
-            tomorrowDate.setDate(now.getDate() + 1);
-            const tomorrow = fmt(tomorrowDate);
-            const dayAfterDate = new Date(tomorrowDate);
-            dayAfterDate.setDate(tomorrowDate.getDate() + 1);
-            const dayAfter = fmt(dayAfterDate);
-            return [
-                { id: 't_default_1', title: '初始化系统设置', project: '设计系统', start: today, end: tomorrow, status: 'todo', desc: '' },
-                { id: 't_default_2', title: '数据库迁移', project: '开发中心 > 后端开发', start: tomorrow, end: dayAfter, status: 'inprogress', desc: '' },
-                { id: 't_default_3', title: '审查 Q4 指标', project: '待办中心', start: today, end: today, status: 'done', desc: '' },
-                { id: 't_default_4', title: '用户测试', project: '设计系统', start: tomorrow, end: dayAfter, status: 'todo', desc: '' }
-            ];
-        })();
+        const defaultTasks = []; // 空数组，不创建默认示例任务
         const defaultProjects = [{ id: 'p1', name: '待办中心', hex: '#9ca3af', expanded: true, children: [] }, { id: 'p2', name: '设计系统', hex: '#60a5fa', expanded: true, children: [] }, { id: 'p3', name: '开发中心', hex: '#fbbf24', expanded: true, children: [{id: 'c1', name: '后端开发', hex: '#9ca3af'}, {id: 'c2', name: '前端开发', hex: '#9ca3af'}] }];
         
         // 获取当前日期作为默认日历日期
         const today = new Date();
         let tasks = defaultTasks, projectList = defaultProjects, userName = "John Doe";
+        
+        // 数据版本控制 - 强制清除旧数据（删除这行注释可重置所有数据）
+        // localStorage.removeItem('nexus_tasks'); localStorage.removeItem('nexus_projects');
+        
         try {
             const storedTasks = localStorage.getItem(STORAGE_KEY);
             const storedProjects = localStorage.getItem('nexus_projects');
             const storedUser = localStorage.getItem('nexus_username');
-            if (storedTasks) tasks = JSON.parse(storedTasks);
+            if (storedTasks) {
+                tasks = JSON.parse(storedTasks);
+                // 如果加载的任务是默认示例任务（通过id判断），清空它们
+                if (tasks.some(t => t.id && t.id.startsWith('t_default_'))) {
+                    console.log('检测到旧版示例任务，清空任务列表');
+                    tasks = [];
+                }
+            }
             if (storedProjects) projectList = JSON.parse(storedProjects);
             if (storedUser) userName = storedUser;
         } catch (e) {
@@ -749,25 +844,29 @@
         }
 
         function navigateTo(v) {
-            currentView = v;
-            
-            // 如果切换到日历视图，且日历日期不在当前年份，则同步为当前日期
-            const currentYear = new Date().getFullYear();
-            if (v === 'calendar' && Math.abs(currentCalDate.year - currentYear) > 1) {
-                const now = new Date();
-                currentCalDate = { year: now.getFullYear(), month: now.getMonth(), day: now.getDate() };
+            try {
+                currentView = v;
+                
+                // 如果切换到日历视图，且日历日期不在当前年份，则同步为当前日期
+                const currentYear = new Date().getFullYear();
+                if (v === 'calendar' && Math.abs(currentCalDate.year - currentYear) > 1) {
+                    const now = new Date();
+                    currentCalDate = { year: now.getFullYear(), month: now.getMonth(), day: now.getDate() };
+                }
+                
+                if(window.innerWidth < 768) { const s = document.getElementById('main-sidebar'); if (!s.classList.contains('-translate-x-full')) toggleSidebar(); }
+                ['inbox', 'projects', 'calendar', 'stats'].forEach(x => {
+                    document.getElementById(`view-${x}`).classList.add('hidden');
+                    const n = document.getElementById(`nav-${x}`);
+                    n.classList.remove('bg-gray-200/60', 'text-gray-900'); n.classList.add('text-gray-500', 'hover:bg-gray-100');
+                });
+                document.getElementById(`view-${v}`).classList.remove('hidden');
+                const a = document.getElementById(`nav-${v}`); a.classList.remove('text-gray-500', 'hover:bg-gray-100'); a.classList.add('bg-gray-200/60', 'text-gray-900');
+                document.getElementById('page-title').innerText = { 'inbox': '列表视图', 'projects': '看板视图', 'calendar': '日历视图', 'stats': '统计分析' }[v];
+                renderAllViews();
+            } catch (e) {
+                console.error('navigateTo 出错:', e);
             }
-            
-            if(window.innerWidth < 768) { const s = document.getElementById('main-sidebar'); if (!s.classList.contains('-translate-x-full')) toggleSidebar(); }
-            ['inbox', 'projects', 'calendar', 'stats'].forEach(x => {
-                document.getElementById(`view-${x}`).classList.add('hidden');
-                const n = document.getElementById(`nav-${x}`);
-                n.classList.remove('bg-gray-200/60', 'text-gray-900'); n.classList.add('text-gray-500', 'hover:bg-gray-100');
-            });
-            document.getElementById(`view-${v}`).classList.remove('hidden');
-            const a = document.getElementById(`nav-${v}`); a.classList.remove('text-gray-500', 'hover:bg-gray-100'); a.classList.add('bg-gray-200/60', 'text-gray-900');
-            document.getElementById('page-title').innerText = { 'inbox': '列表视图', 'projects': '看板视图', 'calendar': '日历视图', 'stats': '统计分析' }[v];
-            renderAllViews();
         }
 
         function getProjectColor(pName) {
@@ -862,10 +961,16 @@
         }
 
         function renderAllViews() {
-            if(currentView === 'inbox') renderInbox(); else if(currentView === 'projects') renderProjects();
-            else if(currentView === 'calendar') renderCalendar(); else if(currentView === 'stats') renderStats();
-            if(window.lucide) lucide.createIcons();
-            setTimeout(() => { if(['projects','calendar'].includes(currentView)) TouchDragManager.init(); }, 100);
+            try {
+                if(currentView === 'inbox') renderInbox(); 
+                else if(currentView === 'projects') renderProjects();
+                else if(currentView === 'calendar') renderCalendar(); 
+                else if(currentView === 'stats') renderStats();
+                if(window.lucide) lucide.createIcons();
+                setTimeout(() => { if(['projects','calendar'].includes(currentView)) TouchDragManager.init(); }, 100);
+            } catch (e) {
+                console.error('renderAllViews 出错:', e);
+            }
         }
 
         function renderInbox() {
@@ -889,9 +994,14 @@
                 const taskEl = document.createElement('div');
                 taskEl.className = `group flex items-center p-3 hover:bg-gray-50 rounded-lg cursor-pointer border border-transparent hover:border-gray-200 transition-all ${d ? 'opacity-60' : ''}`;
                 taskEl.innerHTML = `
-                    <div onclick="event.stopPropagation(); toggleTaskStatus(${t.id})" class="mr-3 ${d ? 'text-gray-400' : 'text-gray-300 group-hover:text-gray-400'} shrink-0 p-1"><i data-lucide="${d ? 'check-square' : 'square'}" class="w-5 h-5"></i></div>
-                    <div class="flex flex-col flex-1 min-w-0" onclick="openModal(${t.id})"><span class="text-sm ${d ? 'text-gray-500 line-through' : 'text-gray-700 font-medium'} truncate">${safeTitle}</span><span class="text-xs text-gray-400 truncate flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full" style="background-color:${safeColor}"></span>${safeProject} • ${dateDisplay}</span></div>
-                    <div class="ml-auto pl-2 shrink-0" onclick="openModal(${t.id})"><span class="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">${safeProject}</span></div>`;
+                    <div class="mr-3 ${d ? 'text-gray-400' : 'text-gray-300 group-hover:text-gray-400'} shrink-0 p-1 task-check-btn"><i data-lucide="${d ? 'check-square' : 'square'}" class="w-5 h-5"></i></div>
+                    <div class="flex flex-col flex-1 min-w-0"><span class="text-sm ${d ? 'text-gray-500 line-through' : 'text-gray-700 font-medium'} truncate">${safeTitle}</span><span class="text-xs text-gray-400 truncate flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full" style="background-color:${safeColor}"></span>${safeProject} • ${dateDisplay}</span></div>
+                    <div class="ml-auto pl-2 shrink-0"><span class="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">${safeProject}</span></div>`;
+                
+                // 使用 JavaScript 绑定点击事件，避免模板字符串中的引号问题
+                taskEl.onclick = () => openModal(t.id);
+                const checkBtn = taskEl.querySelector('.task-check-btn');
+                checkBtn.onclick = (e) => { e.stopPropagation(); toggleTaskStatus(t.id); };
                 
                 if (d) {
                     cl.appendChild(taskEl);
@@ -1242,10 +1352,130 @@
             if(p === 'today') { s.value = e.value = fmtDate(t); } 
             else if (p === 'week') { const d = new Date(t); d.setDate(t.getDate() - 6); s.value = fmtDate(d); e.value = fmtDate(t); } 
             else if (p === 'month') { s.value = fmtDate(new Date(t.getFullYear(), t.getMonth(), 1)); e.value = fmtDate(new Date(t.getFullYear(), t.getMonth() + 1, 0)); }
-            ['today', 'week', 'month'].forEach(k => { const b = document.getElementById(`stats-btn-${k}`); b.className = k === p ? 'px-3 py-1 text-xs font-medium rounded-md transition-all whitespace-nowrap bg-gray-100 text-gray-900 shadow-sm' : 'px-3 py-1 text-xs font-medium rounded-md transition-all whitespace-nowrap text-gray-500'; });
+            ['today', 'week', 'month'].forEach(k => { 
+                const b = document.getElementById(`stats-btn-${k}`); 
+                if (k === p) {
+                    b.className = 'px-3 py-1 text-xs font-medium rounded-md transition-all whitespace-nowrap bg-gray-100 text-gray-900 shadow-sm';
+                    b.style.backgroundColor = '#f3f4f6';
+                    b.style.color = '#111827';
+                } else {
+                    b.className = 'px-3 py-1 text-xs font-medium rounded-md transition-all whitespace-nowrap text-gray-500';
+                    b.style.backgroundColor = '';
+                    b.style.color = '';
+                }
+            });
             renderStats();
         }
-        function updateStatsFromInputs() { statsPeriod = 'custom'; ['today', 'week', 'month'].forEach(k => document.getElementById(`stats-btn-${k}`).className = 'px-3 py-1 text-xs font-medium rounded-md transition-all whitespace-nowrap text-gray-500'); renderStats(); }
+        function updateStatsFromInputs() { 
+            statsPeriod = 'custom'; 
+            ['today', 'week', 'month'].forEach(k => {
+                const b = document.getElementById(`stats-btn-${k}`);
+                b.className = 'px-3 py-1 text-xs font-medium rounded-md transition-all whitespace-nowrap text-gray-500';
+                b.style.backgroundColor = '';
+                b.style.color = '';
+            }); 
+            renderStats(); 
+        }
+        
+        // 工时设置存储
+        const SETTINGS_KEY = 'nexus_settings';
+        // 每日工时设置（默认：每天8小时标准，2小时加班）
+        let workSettings = { standardHours: 8, overtimeHours: 2 };
+        try {
+            const stored = localStorage.getItem(SETTINGS_KEY);
+            if (stored) workSettings = JSON.parse(stored);
+        } catch (e) {}
+        
+        function saveWorkSettings() {
+            localStorage.setItem(SETTINGS_KEY, JSON.stringify(workSettings));
+        }
+        
+        function toggleStatsSettings() {
+            const panel = document.getElementById('stats-settings-panel');
+            panel.classList.toggle('hidden');
+            if (!panel.classList.contains('hidden')) {
+                document.getElementById('setting-standard-hours').value = workSettings.standardHours;
+                document.getElementById('setting-overtime-hours').value = workSettings.overtimeHours;
+            }
+        }
+        
+        function saveStatsSettings() {
+            const std = parseFloat(document.getElementById('setting-standard-hours').value) || 8;
+            const ot = parseFloat(document.getElementById('setting-overtime-hours').value) || 2;
+            workSettings.standardHours = Math.max(0.5, Math.min(24, std));
+            workSettings.overtimeHours = Math.max(0, Math.min(24, ot));
+            saveWorkSettings();
+            document.getElementById('stats-settings-panel').classList.add('hidden');
+            renderStats();
+            showToast('设置已保存');
+        }
+        
+        function toggleLifeOverview() {
+            const content = document.getElementById('life-overview-content');
+            const icon = document.getElementById('life-overview-icon');
+            content.classList.toggle('hidden');
+            icon.style.transform = content.classList.contains('hidden') ? '' : 'rotate(180deg)';
+        }
+        
+        // 计算任务的完整计划时长（小时）
+        function getTaskTotalHours(task) {
+            // 检查时间字段是否存在，如果不存在，可能是旧数据，按天计算
+            const hasTime = task.startTime && task.endTime;
+            
+            let taskStart, taskEnd;
+            if (hasTime) {
+                taskStart = new Date(task.start + 'T' + task.startTime);
+                taskEnd = new Date(task.end + 'T' + task.endTime);
+            } else {
+                // 旧数据：按整天计算（默认09:30-20:00）
+                taskStart = new Date(task.start + 'T09:30');
+                taskEnd = new Date(task.end + 'T20:00');
+            }
+            
+            const hours = (taskEnd - taskStart) / (1000 * 60 * 60);
+            return Math.round(hours * 10) / 10;
+        }
+        
+        // 检查任务是否在时间段内有重叠
+        function isTaskInPeriod(task, periodStart, periodEnd) {
+            // 如果任务有精确时间，使用精确时间判断；否则使用日期判断
+            const hasTime = task.startTime && task.endTime;
+            const taskStart = hasTime 
+                ? new Date(task.start + 'T' + task.startTime)
+                : new Date(task.start + 'T00:00:00');
+            const taskEnd = hasTime
+                ? new Date(task.end + 'T' + task.endTime)
+                : new Date(task.end + 'T23:59:59');
+            const pStart = new Date(periodStart + 'T00:00:00');
+            const pEnd = new Date(periodEnd + 'T23:59:59');
+            // 有交集的条件：任务开始 <= 周期结束 且 任务结束 >= 周期开始
+            return taskStart <= pEnd && taskEnd >= pStart;
+        }
+        
+        // 调试函数：在控制台打印所有任务数据
+        function debugTasks() {
+            console.log('=== 调试任务数据 ===');
+            console.log('所有任务数量:', tasks.length);
+            console.log('任务列表:', JSON.stringify(tasks, null, 2));
+        }
+        
+        // 测试时间计算
+        function testTimeCalc(startDate, startTime, endDate, endTime) {
+            const task = { start: startDate, startTime, end: endDate, endTime };
+            const hours = getTaskTotalHours(task);
+            console.log(`测试: ${startDate} ${startTime} ~ ${endDate} ${endTime} = ${hours}小时`);
+            return hours;
+        }
+        
+        // 清除所有数据（调试用）
+        function clearAllData() {
+            if(confirm('确定要清除所有任务数据吗？此操作不可恢复！')) {
+                localStorage.removeItem('nexus_tasks');
+                localStorage.removeItem('nexus_projects');
+                tasks = [];
+                location.reload();
+            }
+        }
         
         function renderStats() {
             const list = document.getElementById('stats-project-list'),
@@ -1257,334 +1487,285 @@
             list.innerHTML = '';
             pieArcs.innerHTML = '';
             if(!sVal || !eVal) return;
-
-            const sD = new Date(sVal), eD = new Date(eVal);
+            
+            // 自动清理空项目
+            const usedParentNames = new Set();
+            tasks.forEach(t => {
+                if (t.project) usedParentNames.add(getParentNameFromPath(t.project));
+            });
+            const originalLength = projectList.length;
+            let hasChanges = false;
+            projectList = projectList.filter(p => {
+                if (usedParentNames.has(p.name)) return true;
+                if (p.children && p.children.length > 0) return true;
+                if (p.name !== '新项目') return true;
+                hasChanges = true;
+                return false;
+            });
+            if (hasChanges && projectList.length !== originalLength) saveTasks();
 
             // 筛选在时间段内有重叠的任务
-            const visibleTasks = getFilteredTasks().filter(t => {
-                const taskStart = new Date(t.start);
-                const taskEnd = new Date(t.end);
-                return taskStart <= eD && taskEnd >= sD;
-            });
+            const visibleTasks = getFilteredTasks().filter(t => isTaskInPeriod(t, sVal, eVal));
 
-            // 统计每个任务在时间段内的交集天数
+            // 统计每个任务的完整计划小时数
             const taskStats = visibleTasks.map(t => {
-                const overlapDays = getOverlapDays(t.start, t.end, sVal, eVal);
+                const hours = getTaskTotalHours(t);
                 const parentName = getParentNameFromPath(t.project);
-                return { ...t, overlapDays, parentName };
+                return { ...t, hours, parentName };
             });
 
             const totalTaskCount = taskStats.length;
-            const totalOverlapDays = taskStats.reduce((sum, t) => sum + t.overlapDays, 0);
+            const totalWorkHours = taskStats.reduce((sum, t) => sum + t.hours, 0);
 
-            // 按父项目分组统计 - 包括所有定义的父项目
+            // 按父项目分组统计（只包含有任务的项目）
             const projectGroups = {};
-            // 初始化所有父项目（包括没有任务的）
-            projectList.forEach(p => {
-                projectGroups[p.name] = {
-                    tasks: [],
-                    totalDays: 0,
-                    hex: p.hex,
-                    isEmpty: true
-                };
+            // 只初始化有任务的父项目（复用之前的变量，避免重复声明）
+            const taskParentNames = new Set(taskStats.map(t => t.parentName));
+            taskParentNames.forEach(parentName => {
+                const p = projectList.find(proj => proj.name === parentName);
+                if (p) {
+                    projectGroups[p.name] = { tasks: [], totalHours: 0, hex: p.hex, isEmpty: true };
+                }
             });
-
-            // 填充任务数据
             taskStats.forEach(t => {
                 if (projectGroups[t.parentName]) {
                     projectGroups[t.parentName].tasks.push(t);
-                    projectGroups[t.parentName].totalDays += t.overlapDays;
+                    projectGroups[t.parentName].totalHours += t.hours;
                     projectGroups[t.parentName].isEmpty = false;
                 }
             });
 
+            // 计算时间段天数（今天=1，本周=7，本月=实际天数）
+            const periodDays = Math.ceil((new Date(eVal + 'T00:00:00') - new Date(sVal + 'T00:00:00')) / (1000 * 60 * 60 * 24)) + 1;
+            
+            // 根据每日设置计算时间段目标
+            const dailyStandard = workSettings.standardHours; // 每日标准工时
+            const dailyOvertime = workSettings.overtimeHours; // 每日加班时长
+            const standardTarget = dailyStandard * periodDays;  // 标准目标
+            const overtimeTarget = dailyOvertime * periodDays;  // 加班目标
+            const totalTarget = standardTarget + overtimeTarget; // 总目标（圆环分母）
+            
             // 更新顶部统计卡片
             const activeProjectCount = Object.values(projectGroups).filter(g => !g.isEmpty).length;
             document.getElementById('stat-project-count').innerText = activeProjectCount;
             document.getElementById('stat-total-days').innerText = totalTaskCount;
-            document.getElementById('stat-task-count').innerText = totalOverlapDays;
+            document.getElementById('stat-task-count').innerText = totalWorkHours.toFixed(1) + 'h';
 
-            // 准备数据：所有父项目
-            let data = projectList.map((p, idx) => {
-                const g = projectGroups[p.name];
-                return {
-                    id: 'project-' + idx,
-                    name: p.name,
-                    taskCount: g.tasks.length,
-                    totalDays: g.totalDays,
-                    tasks: g.tasks,
-                    c: g.isEmpty ? '#e5e7eb' : p.hex,
-                    isEmpty: g.isEmpty
-                };
-            });
-
-            // 按任务数排序（有任务的在前）
-            data.sort((a, b) => b.taskCount - a.taskCount);
+            // 更新生活全景（简化版）- 标准/加班/其他
+            const totalHoursInPeriod = periodDays * 24;
+            const standardActual = Math.min(totalWorkHours, standardTarget);
+            const overtimeActual = Math.max(0, totalWorkHours - standardTarget);
+            const otherHours = Math.max(0, totalHoursInPeriod - totalWorkHours);
+            
+            // 更新生活全景进度条（3色：蓝=标准，橙=加班，灰=其他）
+            document.getElementById('life-standard-bar').style.width = Math.min((standardActual / totalHoursInPeriod) * 100, 100) + '%';
+            document.getElementById('life-overtime-bar').style.width = Math.min((overtimeActual / totalHoursInPeriod) * 100, 100) + '%';
+            document.getElementById('life-other-bar').style.width = Math.min((otherHours / totalHoursInPeriod) * 100, 100) + '%';
+            document.getElementById('life-standard-text').textContent = standardActual.toFixed(1) + 'h';
+            document.getElementById('life-overtime-text').textContent = overtimeActual.toFixed(1) + 'h';
+            document.getElementById('life-other-text').textContent = otherHours.toFixed(0) + 'h';
+            
+            // 更新中心显示
+            document.getElementById('pie-center-hours').innerText = totalWorkHours.toFixed(1) + 'h';
+            let detailText = '';
+            if (totalWorkHours > standardTarget) {
+                const ot = totalWorkHours - standardTarget;
+                if (ot > overtimeTarget) {
+                    detailText = `标准${standardTarget}h + 加班${ot.toFixed(1)}h（超${(ot-overtimeTarget).toFixed(1)}h）`;
+                } else {
+                    detailText = `标准${standardTarget}h + 加班${ot.toFixed(1)}h`;
+                }
+            } else {
+                detailText = `目标 ${standardTarget}h（${periodDays}天×${dailyStandard}h）`;
+            }
+            document.getElementById('pie-center-detail').innerText = detailText;
+            
+            // 显示/隐藏加班警示（超过总目标时）
+            const warningEl = document.getElementById('overtime-warning');
+            if (totalWorkHours > totalTarget) {
+                warningEl.classList.remove('hidden');
+            } else {
+                warningEl.classList.add('hidden');
+            }
 
             // SVG 弧形绘制辅助函数
-            const cx = 100, cy = 100, r = 90;
+            const cx = 100, cy = 100;
             function polarToCartesian(cx, cy, r, angleInDegrees) {
                 const angleInRadians = (angleInDegrees - 90) * Math.PI / 180.0;
-                return {
-                    x: cx + (r * Math.cos(angleInRadians)),
-                    y: cy + (r * Math.sin(angleInRadians))
-                };
+                return { x: cx + (r * Math.cos(angleInRadians)), y: cy + (r * Math.sin(angleInRadians)) };
             }
             function describeArc(cx, cy, r, startAngle, endAngle) {
-                // 处理完整圆的情况
-                if (endAngle - startAngle >= 359.99) {
-                    endAngle = startAngle + 359.99;
-                }
+                if (endAngle - startAngle >= 359.99) endAngle = startAngle + 359.99;
                 const start = polarToCartesian(cx, cy, r, endAngle);
                 const end = polarToCartesian(cx, cy, r, startAngle);
                 const largeArcFlag = endAngle - startAngle <= 180 ? "0" : "1";
                 return `M ${start.x} ${start.y} A ${r} ${r} 0 ${largeArcFlag} 0 ${end.x} ${end.y}`;
             }
 
+            // 准备项目数据（只包含有任务的项目）
+            let data = Object.keys(projectGroups).map((parentName, idx) => {
+                const g = projectGroups[parentName];
+                const p = projectList.find(proj => proj.name === parentName);
+                return {
+                    id: 'project-' + idx,
+                    name: parentName,
+                    taskCount: g.tasks.length,
+                    totalHours: g.totalHours,
+                    tasks: g.tasks,
+                    c: p ? p.hex : '#9ca3af',
+                    isEmpty: g.isEmpty
+                };
+            }).filter(d => !d.isEmpty);
+            data.sort((a, b) => b.totalHours - a.totalHours);
+
+            // 绘制双层圆环
+            // 绘制双层圆环
+            if (totalWorkHours > 0) {
+                // 外圈：各项目工作时长占总目标的比例
+                // 如果超过总目标，按总目标比例分配；如果未超，按实际比例
+                const displayTotal = Math.max(totalWorkHours, totalTarget);
+                let startAngle = 0;
+                const outerRadius = 90, outerWidth = 20;
+                
+                data.forEach((d, idx) => {
+                    const projectRatio = d.totalHours / displayTotal;
+                    const projectAngle = projectRatio * 360;
+                    if (projectAngle < 0.5) return;
+                    
+                    const endAngle = startAngle + projectAngle;
+                    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                    path.setAttribute('d', describeArc(cx, cy, outerRadius, startAngle, endAngle));
+                    path.setAttribute('stroke', d.c);
+                    path.setAttribute('stroke-width', outerWidth);
+                    path.setAttribute('fill', 'none');
+                    path.setAttribute('class', 'pie-arc transition-all duration-300');
+                    path.dataset.projectId = d.id;
+                    path.dataset.hours = d.totalHours.toFixed(1);
+                    path.dataset.projectName = d.name;
+                    
+                    // Tooltip事件
+                    path.addEventListener('mouseenter', (e) => {
+                        highlightProject(d.id);
+                        showPieTooltip(e, d);
+                    });
+                    path.addEventListener('mousemove', (e) => showPieTooltip(e, d));
+                    path.addEventListener('mouseleave', clearHighlight);
+                    
+                    pieArcs.appendChild(path);
+                    startAngle = endAngle;
+                });
+                
+                // 内圈：实际加班时长占加班目标的比例
+                if (totalWorkHours > standardTarget) {
+                    const overtimeTotal = totalWorkHours - standardTarget;
+                    // 内圈比例：加班时长 / 加班目标
+                    const overtimeRatio = Math.min(overtimeTotal / overtimeTarget, 1);
+                    const overtimeAngle = overtimeRatio * 360;
+                    
+                    const innerRadius = 65, innerWidth = 15;
+                    
+                    // 内圈显示加班比例（单一颜色）
+                    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                    path.setAttribute('d', describeArc(cx, cy, innerRadius, 0, overtimeAngle));
+                    // 超过加班目标显示红色，否则橙色
+                    path.setAttribute('stroke', overtimeTotal > overtimeTarget ? '#ef4444' : '#fb923c');
+                    path.setAttribute('stroke-width', innerWidth);
+                    path.setAttribute('fill', 'none');
+                    path.setAttribute('class', 'pie-arc transition-all duration-300');
+                    path.dataset.isOvertime = 'true';
+                    
+                    pieArcs.appendChild(path);
+                }
+            }
+
+            // Tooltip显示函数
+            function showPieTooltip(e, d) {
+                pieTooltip.innerHTML = '';
+                const taskListHtml = d.tasks.length > 0
+                    ? d.tasks.map(t => `<div class="flex justify-between py-0.5 text-xs"><span class="truncate max-w-[120px]">${escapeHtml(t.title)}</span><span class="text-gray-500 ml-2">${t.hours.toFixed(1)}h</span></div>`).join('')
+                    : '<div class="text-xs text-gray-400">无任务</div>';
+                
+                pieTooltip.innerHTML = `
+                    <div class="flex items-center gap-2 mb-1 pb-1 border-b border-gray-100">
+                        <span class="w-2 h-2 rounded-full" style="background-color: ${escapeHtml(d.c)}"></span>
+                        <span class="text-xs font-semibold text-gray-700">${escapeHtml(d.name)}</span>
+                        <span class="text-xs text-gray-400 ml-auto">${d.totalHours.toFixed(1)}h</span>
+                    </div>
+                    <div class="max-h-24 overflow-y-auto">${taskListHtml}</div>
+                `;
+                
+                const rect = document.getElementById('stats-pie-chart').getBoundingClientRect();
+                const containerRect = document.getElementById('stats-pie-chart').parentElement.getBoundingClientRect();
+                let left = e.clientX - containerRect.left + 10;
+                let top = e.clientY - containerRect.top + 10;
+                if (left + 200 > containerRect.width) left = e.clientX - containerRect.left - 200;
+                if (top + 100 > containerRect.height) top = e.clientY - containerRect.top - 100;
+                
+                pieTooltip.style.left = left + 'px';
+                pieTooltip.style.top = top + 'px';
+                pieTooltip.classList.add('show');
+            }
+
             // 高亮控制函数
             function highlightProject(projectId) {
-                // 高亮对应的弧形
                 document.querySelectorAll('.pie-arc').forEach(arc => {
                     if (arc.dataset.projectId === projectId) {
-                        arc.classList.add('active');
-                        arc.classList.remove('dimmed');
-                    } else {
-                        arc.classList.add('dimmed');
-                        arc.classList.remove('active');
+                        arc.style.opacity = '1';
+                        arc.style.filter = 'brightness(1.1)';
+                    } else if (!arc.dataset.isOvertime) {
+                        arc.style.opacity = '0.4';
                     }
                 });
-                // 高亮对应的列表行
                 document.querySelectorAll('.stats-row').forEach(row => {
                     if (row.dataset.projectId === projectId) {
-                        row.classList.add('active');
-                        row.classList.remove('dimmed');
+                        row.classList.add('bg-gray-50');
                     } else {
-                        row.classList.add('dimmed');
-                        row.classList.remove('active');
+                        row.style.opacity = '0.5';
                     }
                 });
             }
 
             function clearHighlight() {
                 document.querySelectorAll('.pie-arc').forEach(arc => {
-                    arc.classList.remove('active', 'dimmed');
+                    arc.style.opacity = '';
+                    arc.style.filter = '';
                 });
                 document.querySelectorAll('.stats-row').forEach(row => {
-                    row.classList.remove('active', 'dimmed');
+                    row.classList.remove('bg-gray-50');
+                    row.style.opacity = '';
                 });
                 pieTooltip.classList.remove('show');
             }
 
-            // 显示环形图 tooltip
-            function showPieTooltip(e, d) {
-                // 先清空内容避免叠加
-                pieTooltip.innerHTML = '';
+            // 创建项目列表（简化版，无悬窗）
+            const maxDisplayHours = Math.max(totalWorkHours, standardTarget);
+            data.forEach((d, idx) => {
+                const hoursPct = maxDisplayHours > 0 ? (d.totalHours / maxDisplayHours) * 100 : 0;
+                const row = document.createElement('div');
+                row.className = 'flex items-center py-2 px-2 rounded-lg hover:bg-gray-50 transition-all';
                 
-                const taskListHtml = d.tasks.length > 0
-                    ? d.tasks.map(t => {
-                        const title = escapeHtml(t.title || '未命名任务');
-                        const days = t.overlapDays || 0;
-                        return `<div class="flex items-center justify-between py-1 border-b border-gray-100 last:border-0" style="min-height: 20px;">
-                            <span class="text-xs text-gray-700 truncate max-w-[120px]" title="${title}">${title}</span>
-                            <span class="text-xs text-gray-500 ml-2 flex-shrink-0">${days}天</span>
-                        </div>`;
-                    }).join('')
-                    : '<div class="text-xs text-gray-400 py-1">该时间段内无任务</div>';
-
-                const headerHtml = `
-                    <div class="flex items-center gap-2 mb-2 pb-2 border-b border-gray-100">
-                        <span class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: ${escapeHtml(d.c)}"></span>
-                        <span class="text-xs font-semibold text-gray-700 truncate flex-1">${escapeHtml(d.name)}</span>
-                        <span class="text-xs text-gray-400 flex-shrink-0 ml-2">${d.taskCount}个任务</span>
+                row.innerHTML = `
+                    <div class="flex-none w-28 sm:w-32">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2.5 h-2.5 rounded-full" style="background-color: ${escapeHtml(d.c)}"></span>
+                            <span class="text-sm font-medium text-gray-700 truncate">${escapeHtml(d.name)}</span>
+                        </div>
+                    </div>
+                    <div class="flex-1 mx-3">
+                        <div class="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+                            <div class="h-full rounded-full transition-all" style="width: ${Math.min(hoursPct, 100)}%; background-color: ${escapeHtml(d.c)}"></div>
+                        </div>
+                    </div>
+                    <div class="flex-none w-24 text-right">
+                        <span class="text-sm font-semibold text-gray-900">${d.totalHours.toFixed(1)}h</span>
+                        <span class="text-xs text-gray-400 ml-1">(${d.taskCount}个)</span>
                     </div>
                 `;
                 
-                const footerHtml = d.totalDays > 0 
-                    ? `<div class="text-xs text-gray-500 mt-2 pt-2 border-t border-gray-100">时间段内共 ${d.totalDays} 人天</div>` 
-                    : '';
-                
-                pieTooltip.innerHTML = headerHtml + `<div class="max-h-32 overflow-y-auto">${taskListHtml}</div>` + footerHtml;
-
-                // 计算 tooltip 位置
-                const pieChart = document.getElementById('stats-pie-chart');
-                const rect = pieChart.getBoundingClientRect();
-                const containerRect = pieChart.parentElement.getBoundingClientRect();
-
-                // 基于鼠标位置调整 tooltip
-                let left = e.clientX - containerRect.left + 15;
-                let top = e.clientY - containerRect.top + 15;
-
-                // 确保不超出容器
-                if (left + 220 > containerRect.width) {
-                    left = e.clientX - containerRect.left - 220;
-                }
-                if (top + 150 > containerRect.height) {
-                    top = e.clientY - containerRect.top - 150;
-                }
-
-                pieTooltip.style.left = left + 'px';
-                pieTooltip.style.top = top + 'px';
-                pieTooltip.classList.add('show');
-            }
-
-            if(totalTaskCount === 0) {
-                // 没有任务时，显示0%负载率
-                document.getElementById('pie-center-label').innerText = '0%';
-                const centerLabel = document.getElementById('pie-center-label');
-                if (centerLabel.previousElementSibling) {
-                    centerLabel.previousElementSibling.innerText = '负载率';
-                }
-
-                // 显示所有项目为灰色，均匀分布
-                let startAngle = 0;
-                const count = data.length;
-                data.forEach((d, idx) => {
-                    const pct = 1 / count;
-                    const endAngle = startAngle + pct * 360;
-
-                    // 创建 SVG 弧形
-                    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                    path.setAttribute('d', describeArc(cx, cy, r, startAngle, endAngle));
-                    path.setAttribute('stroke', d.c);
-                    path.setAttribute('class', 'pie-arc');
-                    path.dataset.projectId = d.id;
-                    pieArcs.appendChild(path);
-
-                    startAngle = endAngle;
-
-                    // 创建列表行（无悬停提示）
-                    const row = document.createElement('div');
-                    row.className = 'stats-row flex items-center opacity-50 py-1';
-                    row.dataset.projectId = d.id;
-                    row.innerHTML = `
-                        <div class="flex-none w-28 sm:w-32 md:w-40">
-                            <div class="flex items-center gap-2">
-                                <span class="w-2.5 h-2.5 rounded-full" style="background-color: ${escapeHtml(d.c)}"></span>
-                                <span class="text-sm font-medium text-gray-700 truncate">${escapeHtml(d.name)}</span>
-                            </div>
-                        </div>
-                        <div class="flex-1 mx-2 sm:mx-4">
-                            <div class="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-                                <div class="h-full rounded-full" style="width: 100%; background-color: ${escapeHtml(d.c)}"></div>
-                            </div>
-                        </div>
-                        <div class="flex-none w-20 text-right">
-                            <span class="text-sm font-semibold text-gray-400">0个</span>
-                        </div>
-                    `;
-                    list.appendChild(row);
-                });
-            } else {
-                // 有任务时，按人天占时间段比例分配圆环
-                // 计算时间段总天数
-                const periodTotalDays = Math.round((eD - sD) / (1000 * 60 * 60 * 24)) + 1;
-
-                // 过滤掉没有任务的项目（在环形图中不显示）
-                const activeData = data.filter(d => d.taskCount > 0);
-
-                // 总占比 = min(任务总人天 / 时间段天数, 1)，最多100%
-                const totalRatio = Math.min(totalOverlapDays / periodTotalDays, 1);
-                const totalUsedDegrees = totalRatio * 360;
-
-                // 间隔角度（多个项目时添加间隔）
-                const gapAngle = activeData.length > 1 ? 3 : 0;
-                const totalGap = gapAngle * activeData.length;
-                const availableDegrees = totalUsedDegrees - totalGap;
-
-                let startAngle = 0;
-
-                activeData.forEach((d, idx) => {
-                    // 按每个项目的人天数在总人天中的占比来分配弧形
-                    const pct = d.totalDays / totalOverlapDays;
-                    const arcAngle = Math.max(pct * availableDegrees, 2); // 最小2度，保证可见
-                    const endAngle = startAngle + arcAngle;
-
-                    // 创建 SVG 弧形
-                    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                    path.setAttribute('d', describeArc(cx, cy, r, startAngle, endAngle));
-                    path.setAttribute('stroke', d.c);
-                    path.setAttribute('class', 'pie-arc');
-                    path.dataset.projectId = d.id;
-
-                    // 弧形悬停事件
-                    path.addEventListener('mouseenter', (e) => {
-                        highlightProject(d.id);
-                        showPieTooltip(e, d);
-                    });
-                    path.addEventListener('mousemove', (e) => {
-                        showPieTooltip(e, d);
-                    });
-                    path.addEventListener('mouseleave', clearHighlight);
-
-                    pieArcs.appendChild(path);
-                    startAngle = endAngle + gapAngle;
-                });
-
-                // 更新中心标签：显示负载百分比
-                document.getElementById('pie-center-label').innerText = Math.round(totalRatio * 100) + '%';
-                // 更新中心上方的小字
-                const centerLabel = document.getElementById('pie-center-label');
-                if (centerLabel.previousElementSibling) {
-                    centerLabel.previousElementSibling.innerText = '负载率';
-                }
-
-                // 创建所有项目的列表行
-                data.forEach((d, idx) => {
-                    const daysPct = periodTotalDays > 0 ? d.totalDays / periodTotalDays : 0;
-                    const row = document.createElement('div');
-                    row.className = `stats-row flex items-center cursor-pointer py-1 transition-all ${d.isEmpty ? 'opacity-50' : ''}`;
-                    row.dataset.projectId = d.id;
-
-                    // 构建任务列表HTML
-                    const taskListHtml = d.tasks.length > 0
-                        ? d.tasks.map(t =>
-                            `<div class="flex items-center justify-between py-1 border-b border-gray-100 last:border-0">
-                                <span class="text-xs text-gray-700 truncate max-w-[150px]" title="${escapeHtml(t.title)}">${escapeHtml(t.title)}</span>
-                                <span class="text-xs text-gray-500 ml-2">${t.overlapDays}天</span>
-                            </div>`
-                        ).join('')
-                        : '<div class="text-xs text-gray-400 py-2">该时间段内无任务</div>';
-
-                    row.innerHTML = `
-                        <div class="flex-none w-28 sm:w-32 md:w-40">
-                            <div class="flex items-center gap-2">
-                                <span class="w-2.5 h-2.5 rounded-full" style="background-color: ${escapeHtml(d.c)}"></span>
-                                <span class="text-sm font-medium text-gray-700 truncate">${escapeHtml(d.name)}</span>
-                            </div>
-                        </div>
-                        <div class="flex-1 mx-2 sm:mx-4">
-                            <div class="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-                                <div class="h-full rounded-full transition-all" style="width: ${Math.min(daysPct * 100, 100)}%; background-color: ${escapeHtml(d.c)}"></div>
-                            </div>
-                        </div>
-                        <div class="flex-none w-20 text-right">
-                            <span class="text-sm font-semibold text-gray-900">${d.taskCount}个</span>
-                            ${d.totalDays > 0 ? `<span class="text-xs text-gray-400 ml-1">(${d.totalDays}天)</span>` : ''}
-                        </div>
-                        <!-- 悬停提示 -->
-                        <div class="stats-tooltip">
-                            <div class="text-xs font-semibold text-gray-700 mb-2 pb-2 border-b border-gray-100">
-                                ${escapeHtml(d.name)} · ${d.taskCount}个任务
-                            </div>
-                            <div class="max-h-40 overflow-y-auto">
-                                ${taskListHtml}
-                            </div>
-                            ${d.totalDays > 0 ? `
-                            <div class="text-xs text-gray-500 mt-2 pt-2 border-t border-gray-100">
-                                占时间段 ${Math.round(daysPct * 100)}% · ${d.totalDays}/${periodTotalDays} 天
-                            </div>` : ''}
-                        </div>
-                    `;
-
-                    // 列表行悬停事件（只有有任务的才触发高亮）
-                    if (!d.isEmpty) {
-                        row.addEventListener('mouseenter', () => highlightProject(d.id));
-                        row.addEventListener('mouseleave', clearHighlight);
-                    }
-
-                    list.appendChild(row);
-                });
-            }
+                list.appendChild(row);
+            });
+            
+            if (window.lucide) lucide.createIcons();
         }
 
         let currentDragState = null;
@@ -1787,11 +1968,12 @@
                 parentOption.style.fontWeight = '600';
                 s.appendChild(parentOption);
                 
-                // 子项目选项（缩进，普通字重）
+                // 子项目选项（使用不间断空格缩进，普通字重）
                 if(p.children?.length) {
                     p.children.forEach(c => {
                         const path = getProjectPath(p.name, c.name);
-                        const childOption = new Option(`  ${c.name}`, path);
+                        // 使用 \u00A0（不间断空格）实现缩进
+                        const childOption = new Option('\u00A0\u00A0\u00A0\u00A0' + c.name, path);
                         childOption.style.color = c.hex;
                         s.appendChild(childOption);
                     });
@@ -1971,6 +2153,48 @@
             }
         }
 
+        // 生成时间选择器选项（00:00 - 23:30，每30分钟一个）
+        function generateTimeOptions() {
+            const times = [];
+            for (let h = 0; h < 24; h++) {
+                times.push(`${String(h).padStart(2, '0')}:00`);
+                times.push(`${String(h).padStart(2, '0')}:30`);
+            }
+            return times;
+        }
+        
+        // 填充时间选择器
+        function populateTimeSelects() {
+            try {
+                const times = generateTimeOptions();
+                const startSelect = document.getElementById('input-start-time');
+                const endSelect = document.getElementById('input-end-time');
+                
+                if (!startSelect || !endSelect) {
+                    console.error('时间选择器元素未找到');
+                    return;
+                }
+                
+                // 保存当前值
+                const startValue = startSelect.value;
+                const endValue = endSelect.value;
+                
+                // 生成选项HTML
+                const optionsHtml = times.map(t => `<option value="${t}">${t}</option>`).join('');
+                
+                startSelect.innerHTML = optionsHtml;
+                endSelect.innerHTML = optionsHtml;
+                
+                // 恢复值或设置默认值
+                startSelect.value = startValue || '09:30';
+                endSelect.value = endValue || '20:00';
+                
+                console.log('时间选择器已填充');
+            } catch (e) {
+                console.error('填充时间选择器出错:', e);
+            }
+        }
+
         let modalCloseTimer = null;
         function openModal(id) {
             if(modalCloseTimer) { clearTimeout(modalCloseTimer); modalCloseTimer = null; }
@@ -1982,6 +2206,7 @@
             document.getElementById('project-edit-mode').classList.add('hidden'); 
             document.getElementById('project-view-mode').classList.remove('hidden'); 
             renderProjectOptions();
+            populateTimeSelects(); // 填充时间选择器选项
             b.classList.remove('hidden'); void b.offsetWidth; b.classList.remove('opacity-0'); p.classList.remove('translate-x-full');
             
             if (id) {
@@ -1992,8 +2217,11 @@
                 document.getElementById('input-title').value = t.title; 
                 document.getElementById('input-project').value = t.project; 
                 document.getElementById('input-desc').value = t.desc||''; 
-                document.getElementById('input-start').value = t.start; 
-                document.getElementById('input-end').value = t.end;
+                // 新的时间字段
+                document.getElementById('input-start-date').value = t.start; 
+                document.getElementById('input-start-time').value = t.startTime || '09:30';
+                document.getElementById('input-end-date').value = t.end;
+                document.getElementById('input-end-time').value = t.endTime || '20:00';
                 document.getElementsByName('status').forEach(r => r.checked = r.value === t.status);
             } else {
                 document.getElementById('edit-task-id').value = ''; 
@@ -2002,8 +2230,10 @@
                 document.getElementById('input-title').value = ''; 
                 document.getElementById('input-desc').value = ''; 
                 const d = fmtDate(new Date()); 
-                document.getElementById('input-start').value = d; 
-                document.getElementById('input-end').value = d; 
+                document.getElementById('input-start-date').value = d; 
+                document.getElementById('input-start-time').value = '09:30';
+                document.getElementById('input-end-date').value = d; 
+                document.getElementById('input-end-time').value = '20:00';
                 document.getElementsByName('status')[0].checked = true;
                 updateProjectColorIndicators();
                 updateSyncParentButton();
@@ -2132,8 +2362,10 @@
                     title: title,
                     project: document.getElementById('input-project').value,
                     desc: document.getElementById('input-desc').value,
-                    start: document.getElementById('input-start').value,
-                    end: document.getElementById('input-end').value,
+                    start: document.getElementById('input-start-date').value,
+                    startTime: document.getElementById('input-start-time').value || '09:30',
+                    end: document.getElementById('input-end-date').value,
+                    endTime: document.getElementById('input-end-time').value || '20:00',
                     status: document.querySelector('input[name="status"]:checked')?.value || 'todo'
                 };
                 tasks.unshift(newTask);
@@ -2150,12 +2382,46 @@
                 t.title = title;
                 t.project = document.getElementById('input-project').value;
                 t.desc = document.getElementById('input-desc').value;
-                t.start = document.getElementById('input-start').value;
-                t.end = document.getElementById('input-end').value;
+                t.start = document.getElementById('input-start-date').value;
+                t.startTime = document.getElementById('input-start-time').value || '09:30';
+                t.end = document.getElementById('input-end-date').value;
+                t.endTime = document.getElementById('input-end-time').value || '20:00';
                 const statusEl = document.querySelector('input[name="status"]:checked');
                 if(statusEl) t.status = statusEl.value;
                 saveTasks();
                 renderAllViews();
+            }
+        }
+        
+        // 验证日期时间的合法性
+        function validateDateTime() {
+            const startDate = document.getElementById('input-start-date').value;
+            const startTime = document.getElementById('input-start-time').value;
+            const endDate = document.getElementById('input-end-date').value;
+            const endTime = document.getElementById('input-end-time').value;
+            
+            if (!startDate || !endDate || !startTime || !endTime) return;
+            
+            const start = new Date(startDate + 'T' + startTime);
+            const end = new Date(endDate + 'T' + endTime);
+            
+            // 如果结束时间早于开始时间，自动修正
+            if (end < start) {
+                // 如果是同一天，将结束时间设为开始时间+1小时，并取整到最近的30分钟
+                if (endDate === startDate) {
+                    const newEndTime = new Date(start.getTime() + 60 * 60 * 1000);
+                    let hours = newEndTime.getHours();
+                    let mins = newEndTime.getMinutes();
+                    // 取整到30分钟
+                    mins = mins < 15 ? 0 : (mins < 45 ? 30 : 0);
+                    if (mins === 0 && newEndTime.getMinutes() >= 45) hours++;
+                    if (hours > 23) hours = 23;
+                    document.getElementById('input-end-time').value = 
+                        String(hours).padStart(2, '0') + ':' + String(mins).padStart(2, '0');
+                } else {
+                    // 如果是跨天但时间不对，将结束日期设为开始日期
+                    document.getElementById('input-end-date').value = startDate;
+                }
             }
         }
         function saveTask() {
@@ -2166,8 +2432,10 @@
                 title, 
                 project: document.getElementById('input-project').value, 
                 desc: document.getElementById('input-desc').value, 
-                start: document.getElementById('input-start').value, 
-                end: document.getElementById('input-end').value, 
+                start: document.getElementById('input-start-date').value, 
+                startTime: document.getElementById('input-start-time').value || '09:30',
+                end: document.getElementById('input-end-date').value, 
+                endTime: document.getElementById('input-end-time').value || '20:00',
                 status: document.querySelector('input[name="status"]:checked').value
                 // 颜色不再存储在任务中，动态从项目获取
             };
@@ -2202,6 +2470,38 @@
             } 
         }
         
+        function cleanupEmptyProjects() {
+            // 找出所有有任务的项目（父项目和子项目）
+            const usedProjects = new Set();
+            tasks.forEach(t => {
+                if (t.project) {
+                    const parts = t.project.split(' > ');
+                    usedProjects.add(parts[0]); // 父项目
+                    if (parts.length > 1) {
+                        usedProjects.add(t.project); // 完整路径
+                    }
+                }
+            });
+            
+            const originalLength = projectList.length;
+            // 过滤项目列表：只保留有任务的项目，或有子项目的项目
+            projectList = projectList.filter(p => {
+                // 如果有子项目且子项目中有被使用的，保留
+                const hasUsedChildren = p.children && p.children.some(c => usedProjects.has(p.name + ' > ' + c.name));
+                // 如果父项目被使用，保留
+                const isParentUsed = usedProjects.has(p.name);
+                return isParentUsed || hasUsedChildren || (p.children && p.children.length > 0);
+            });
+            
+            if (projectList.length < originalLength) {
+                saveTasks();
+                renderAllViews();
+                showToast(`已清理 ${originalLength - projectList.length} 个空项目`);
+            } else {
+                showToast('没有空项目需要清理');
+            }
+        }
+
         function getProjectHierarchy(pName) {
             for (let p of projectList) {
                 if (p.name === pName) return { parent: p.name, child: null, hex: p.hex };
@@ -2244,7 +2544,7 @@
                     projects.push(p.name); 
                 } 
             });
-            const prompt = `我正在使用 Nexus 任务管理软件。我需要你作为一个专业的项目经理，帮助我将一段非结构化的项目描述拆解为具体的任务。当前日期: ${today}。现有的项目分类: [${projects.join(', ')}]。请遵循以下规则: 1. 分析我的描述，将其拆解为多个具体的可执行任务。2. 为每个任务分配最合适的现有项目分类（必须严格匹配上述列表中的名称，如果只能匹配父类，请使用父类名称）。3. 估算合理的开始时间和结束时间（格式 YYYY-MM-DD）。4. 状态只能是: "todo" (待办), "inprogress" (进行中), "done" (已完成)。5. 直接输出 JSON 格式代码，不要包含任何 Markdown 格式，只返回纯文本 JSON 数组。结构: [{"title":"任务名称","desc":"描述","start":"YYYY-MM-DD","end":"YYYY-MM-DD","project":"项目名","status":"todo"}]。`;
+            const prompt = `我正在使用 Nexus 任务管理软件。我需要你作为一个专业的项目经理，帮助我将一段非结构化的项目描述拆解为具体的任务。当前日期: ${today}。现有的项目分类: [${projects.join(', ')}]。请遵循以下规则: 1. 分析我的描述，将其拆解为多个具体的可执行任务。2. 为每个任务分配最合适的现有项目分类（必须严格匹配上述列表中的名称，如果只能匹配父类，请使用父类名称）。3. 估算合理的开始时间和结束时间（格式 YYYY-MM-DD）。4. 同时估算精确时间，开始时间默认为09:30，结束时间默认为20:00（格式 HH:MM）。5. 状态只能是: "todo" (待办), "inprogress" (进行中), "done" (已完成)。6. 直接输出 JSON 格式代码，不要包含任何 Markdown 格式，只返回纯文本 JSON 数组。结构: [{"title":"任务名称","desc":"描述","start":"YYYY-MM-DD","startTime":"HH:MM","end":"YYYY-MM-DD","endTime":"HH:MM","project":"项目名","status":"todo"}]。`;
             navigator.clipboard.writeText(prompt).then(() => showToast("Prompt 已复制，请粘贴给 AI"));
         }
         function processImport() {
@@ -2261,7 +2561,9 @@
                             title: item.title, 
                             desc: item.desc || '', 
                             start: item.start, 
+                            startTime: item.startTime || '09:30',
                             end: item.end, 
+                            endTime: item.endTime || '20:00',
                             project: pName || '待办中心', 
                             status: ['todo', 'inprogress', 'done'].includes(item.status) ? item.status : 'todo'
                             // 颜色从项目动态获取，不存储在任务中
@@ -2279,7 +2581,40 @@
         }
         function showToast(msg) { const t = document.getElementById('toast'); document.getElementById('toast-msg').innerText = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3000); }
 
-        initUser(); setStatsPeriod('month'); renderAllViews();
+        // 初始化：清理一次空项目，然后渲染
+        (function initApp() {
+            try {
+                // 清理空项目（只保留有任务的项目和默认项目）
+                const usedParentNames = new Set();
+                tasks.forEach(t => {
+                    if (t.project) {
+                        usedParentNames.add(getParentNameFromPath(t.project));
+                    }
+                });
+                const originalLength = projectList.length;
+                projectList = projectList.filter(p => {
+                    // 保留默认项目（设计系统、待办中心等）
+                    if (['设计系统', '待办中心', '开发中心'].includes(p.name)) return true;
+                    // 保留有任务的项目
+                    if (usedParentNames.has(p.name)) return true;
+                    // 保留有子项目的项目
+                    if (p.children && p.children.length > 0) return true;
+                    // 删除其他空项目（如重复的"新项目"）
+                    return false;
+                });
+                if (projectList.length !== originalLength) {
+                    saveTasks();
+                    console.log(`已清理 ${originalLength - projectList.length} 个空项目`);
+                }
+                
+                initUser(); 
+                setStatsPeriod('month'); 
+                renderAllViews();
+                console.log('应用初始化完成');
+            } catch (e) {
+                console.error('初始化失败:', e);
+            }
+        })();
     </script>
 </body>
 </html>
