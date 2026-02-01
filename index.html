@@ -206,6 +206,12 @@
                 <button onclick="triggerDirectExport()" class="w-full flex items-center space-x-2 px-2 py-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-900 rounded-md text-xs font-medium transition-colors text-left">
                     <i data-lucide="file-down" class="w-3.5 h-3.5"></i><span>导出报告</span>
                 </button>
+                <button onclick="exportAllData()" class="w-full flex items-center space-x-2 px-2 py-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-900 rounded-md text-xs font-medium transition-colors text-left">
+                    <i data-lucide="database" class="w-3.5 h-3.5"></i><span>备份数据</span>
+                </button>
+                <button onclick="importAllData()" class="w-full flex items-center space-x-2 px-2 py-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-900 rounded-md text-xs font-medium transition-colors text-left">
+                    <i data-lucide="database-backup" class="w-3.5 h-3.5"></i><span>恢复数据</span>
+                </button>
             </div>
             <div class="h-px bg-gray-200 my-1 mx-3"></div>
             <div class="px-3 pb-3 pt-1">
@@ -853,24 +859,43 @@
             const storedTasks = localStorage.getItem(STORAGE_KEY);
             const storedProjects = localStorage.getItem('nexus_projects');
             const storedUser = localStorage.getItem('nexus_username');
-            if (storedTasks) {
-                tasks = JSON.parse(storedTasks);
-                console.log('Loaded', tasks.length, 'tasks');
-                // 如果加载的任务是默认示例任务（通过id判断），清空它们
-                if (tasks.some(t => t.id && t.id.startsWith('t_default_'))) {
-                    console.log('检测到旧版示例任务，清空任务列表');
-                    tasks = [];
+            console.log('从localStorage加载数据...');
+            console.log('  storedTasks长度:', storedTasks ? storedTasks.length : 0);
+            console.log('  storedProjects长度:', storedProjects ? storedProjects.length : 0);
+            
+            if (storedTasks && storedTasks !== '[]') {
+                const parsedTasks = JSON.parse(storedTasks);
+                if (Array.isArray(parsedTasks)) {
+                    tasks = parsedTasks;
+                    console.log('Loaded', tasks.length, 'tasks');
+                    // 如果加载的任务是默认示例任务（通过id判断），清空它们
+                    if (tasks.some(t => t.id && t.id.startsWith('t_default_'))) {
+                        console.log('检测到旧版示例任务，清空任务列表');
+                        tasks = [];
+                    }
+                } else {
+                    console.error('加载的任务数据不是数组');
                 }
+            } else {
+                console.log('没有存储的任务或为空数组');
             }
-            if (storedProjects) {
-                projectList = JSON.parse(storedProjects);
-                console.log('Loaded', projectList.length, 'projects:', projectList.map(p => p.name).join(', '));
+            
+            if (storedProjects && storedProjects !== '[]') {
+                const parsedProjects = JSON.parse(storedProjects);
+                if (Array.isArray(parsedProjects)) {
+                    projectList = parsedProjects;
+                    console.log('Loaded', projectList.length, 'projects:', projectList.map(p => p.name).join(', '));
+                } else {
+                    console.error('加载的项目数据不是数组');
+                }
             } else {
                 console.log('No stored projects, using default');
             }
+            
             if (storedUser) userName = storedUser;
         } catch (e) {
             console.error('Failed to load data from storage:', e);
+            alert('加载数据失败，可能是数据损坏');
         }
         let currentCalDate = { year: today.getFullYear(), month: today.getMonth(), day: today.getDate() };
         let calView = 'month', statsPeriod = 'month', currentView = 'inbox';
@@ -925,10 +950,28 @@
         });
 
         function saveTasks() {
-            console.log('Saving task...', tasks.length, 'tasks');
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
-            localStorage.setItem('nexus_projects', JSON.stringify(projectList));
-            localStorage.setItem('nexus_username', userName);
+            try {
+                console.log('Saving tasks...', tasks.length, 'tasks');
+                const tasksJson = JSON.stringify(tasks);
+                const projectsJson = JSON.stringify(projectList);
+                
+                // 检查数据有效性
+                if (tasksJson === '[]' && tasks.length > 0) {
+                    console.error('数据序列化失败：tasks数组非空但JSON为空');
+                    return;
+                }
+                
+                localStorage.setItem(STORAGE_KEY, tasksJson);
+                localStorage.setItem('nexus_projects', projectsJson);
+                localStorage.setItem('nexus_username', userName);
+                
+                // 验证保存成功
+                const savedTasks = localStorage.getItem(STORAGE_KEY);
+                console.log('Saved successfully, localStorage中的任务数:', JSON.parse(savedTasks).length);
+            } catch (e) {
+                console.error('保存任务失败:', e);
+                alert('保存失败，请检查浏览器存储空间');
+            }
         }
         
         function saveTasksWithSnapshot(actionName) {
@@ -2847,6 +2890,7 @@
             // 新建任务时，如果有标题则自动创建
             if(!id) {
                 if(!title) return; // 没有标题不创建
+                console.log('自动保存新建任务:', title);
                 saveSnapshot('自动保存新建任务');
                 // 保存工时配置
                 const { weeklyDefaults, dailyPlans } = saveWorkTimeConfig();
@@ -2863,10 +2907,12 @@
                     weeklyDefaults,
                     dailyPlans
                 };
+                console.log('创建新任务:', newTask);
                 tasks.unshift(newTask);
                 document.getElementById('edit-task-id').value = newTask.id; // 设置为编辑模式
                 saveTasks();
                 renderAllViews();
+                console.log('新任务已保存并渲染, 当前任务总数:', tasks.length);
                 return;
             }
             
@@ -3087,10 +3133,101 @@
             } catch (e) { alert("JSON 解析失败: " + e.message); }
         }
         function showToast(msg) { const t = document.getElementById('toast'); document.getElementById('toast-msg').innerText = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3000); }
+        
+        // 导出所有数据（备份）
+        function exportAllData() {
+            const data = {
+                tasks: tasks,
+                projectList: projectList,
+                workSettings: workSettings,
+                userName: userName,
+                exportDate: new Date().toISOString()
+            };
+            const json = JSON.stringify(data, null, 2);
+            const blob = new Blob([json], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `nexus_backup_${fmtDate(new Date())}.json`;
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => {
+                a.remove();
+                URL.revokeObjectURL(url);
+            }, 100);
+            showToast('数据已导出');
+        }
+        
+        // 导入所有数据（恢复）
+        function importAllData() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const data = JSON.parse(event.target.result);
+                        if (data.tasks) tasks = data.tasks;
+                        if (data.projectList) projectList = data.projectList;
+                        if (data.workSettings) workSettings = { ...workSettings, ...data.workSettings };
+                        if (data.userName) userName = data.userName;
+                        saveTasks();
+                        saveWorkSettings();
+                        renderAllViews();
+                        showToast('数据已恢复');
+                        console.log('数据恢复成功:', data);
+                    } catch (err) {
+                        console.error('数据恢复失败:', err);
+                        alert('数据恢复失败，请检查文件格式');
+                    }
+                };
+                reader.readAsText(file);
+            };
+            input.click();
+        }
 
+        // 检查 localStorage 是否可用
+        function isLocalStorageAvailable() {
+            try {
+                const test = '__test__';
+                localStorage.setItem(test, test);
+                localStorage.removeItem(test);
+                return true;
+            } catch (e) {
+                return false;
+            }
+        }
+        
+        // 页面离开前保存数据
+        window.addEventListener('beforeunload', () => {
+            console.log('页面即将关闭，保存数据...');
+            saveTasks();
+            saveWorkSettings();
+        });
+        
+        // 定期自动保存（每30秒）
+        setInterval(() => {
+            if (tasks.length > 0) {
+                console.log('定期自动保存...');
+                saveTasks();
+                saveWorkSettings();
+            }
+        }, 30000);
+        
         // 初始化：清理一次空项目，然后渲染
         (function initApp() {
             try {
+                // 检查 localStorage 可用性
+                if (!isLocalStorageAvailable()) {
+                    console.error('localStorage 不可用！数据将无法保存。');
+                    alert('警告：您的浏览器禁用了本地存储，数据将无法保存。请关闭无痕模式或检查浏览器设置。');
+                } else {
+                    console.log('localStorage 检查通过，可用空间约:', (JSON.stringify(localStorage).length / 1024).toFixed(2), 'KB');
+                }
+                
                 // 清理空项目（只保留有任务的项目和默认项目）
                 const usedParentNames = new Set();
                 tasks.forEach(t => {
