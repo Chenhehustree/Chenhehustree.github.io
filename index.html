@@ -1,0 +1,3105 @@
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Nexus 任务管理器</title>
+    <link rel="icon" type="image/png" href="icon_128_128.png">
+    <meta name="version" content="1.1">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+                    colors: { gray: { 50: '#fafafa', 100: '#f4f4f5', 200: '#e4e4e7', 300: '#d4d4d8', 400: '#a1a1aa', 500: '#71717a', 600: '#52525b', 700: '#3f3f46', 800: '#27272a', 900: '#18181b' } }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', system-ui, sans-serif; -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent; }
+        .no-scrollbar::-webkit-scrollbar { display: none; } .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .fade-in { animation: fadeIn 0.2s ease-out forwards; } @keyframes fadeIn { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: translateY(0); } }
+        .slide-panel { transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); } .sidebar-mobile { transition: transform 0.3s ease-in-out; }
+        .dragging { opacity: 0.4; } .drag-over { background-color: #f3f4f6; border-radius: 6px; }
+        .touch-mirror { position: fixed; z-index: 9999; pointer-events: none; opacity: 0.9; transform: scale(1.02); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); width: var(--mirror-width); background: white; border-radius: 0.5rem; }
+        .cal-grid-cols-7 { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+        .cal-bg-pattern { background-image: linear-gradient(to right, rgba(0,0,0,0.03) 1px, transparent 1px), linear-gradient(to bottom, rgba(0,0,0,0.03) 1px, transparent 1px); background-size: 20px 20px; }
+        .cal-task-bar { position: relative; z-index: 10; transition: transform 0.1s ease-out, box-shadow 0.1s; color: rgba(0,0,0,0.7); box-sizing: border-box; max-width: 100%; }
+        .cal-task-bar.done { opacity: 0.5; background-image: repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(0,0,0,0.05) 5px, rgba(0,0,0,0.05) 10px); }
+        .task-segment-start { border-top-right-radius: 0; border-bottom-right-radius: 0; border-right: none; margin-right: -1px; z-index: 11; }
+        .task-segment-mid { border-radius: 0; border-left: none; border-right: none; margin-left: -1px; margin-right: -1px; z-index: 10; }
+        .task-segment-end { border-top-left-radius: 0; border-bottom-left-radius: 0; border-left: none; margin-left: -1px; z-index: 11; }
+        .drag-preview-cell { background-color: rgba(59, 130, 246, 0.15) !important; }
+        .resize-handle { position: absolute; top: 0; bottom: 0; width: 12px; cursor: col-resize; z-index: 20; opacity: 0; transition: opacity 0.2s; }
+        .cal-task-bar:hover .resize-handle { opacity: 1; } .resize-handle:hover { background: rgba(0,0,0,0.1); }
+        .resize-handle-l { left: 0; border-top-left-radius: 4px; border-bottom-left-radius: 4px; } .resize-handle-r { right: 0; border-top-right-radius: 4px; border-bottom-right-radius: 4px; }
+        .select-none-all * { user-select: none !important; }
+        .pie-entrance { animation: scaleIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; transform: scale(0.9); opacity: 0; } @keyframes scaleIn { to { transform: scale(1); opacity: 1; } }
+        [contenteditable]:focus { outline: none; background-color: rgba(0,0,0,0.05); border-radius: 4px; padding: 0 4px; }
+        .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+        #toast { visibility: hidden; opacity: 0; transition: opacity 0.3s, transform 0.3s; transform: translateY(20px); }
+        #toast.show { visibility: visible; opacity: 1; transform: translateY(0); }
+        input[type="color"] { -webkit-appearance: none; border: none; width: 20px; height: 20px; padding: 0; overflow: hidden; border-radius: 4px; cursor: pointer; }
+        input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+        input[type="color"]::-webkit-color-swatch { border: none; border-radius: 4px; border: 1px solid rgba(0,0,0,0.1); }
+        
+        /* Timeline View Specifics */
+        .timeline-grid { display: grid; grid-template-columns: 200px 1fr; height: 100%; overflow: hidden; }
+        .timeline-sidebar { border-right: 1px solid #f4f4f5; background: #fafafa; overflow-y: hidden; user-select: none; }
+        .timeline-content { overflow-x: auto; overflow-y: auto; position: relative; }
+        .timeline-header-row { display: flex; border-bottom: 1px solid #e4e4e7; position: sticky; top: 0; z-index: 20; background: #fff; height: 40px; }
+        .timeline-day-col { flex-shrink: 0; width: 40px; text-align: center; border-right: 1px solid #f4f4f5; font-size: 10px; display: flex; align-items: center; justify-content: center; color: #71717a; }
+        .timeline-row { position: relative; border-bottom: 1px solid #f4f4f5; display: flex; align-items: center; transition: background-color 0.1s; }
+        .timeline-row:hover { background-color: #fcfcfc; }
+        .timeline-bar { position: absolute; border-radius: 4px; font-size: 10px; white-space: nowrap; overflow: hidden; display: flex; align-items: center; padding: 0 4px; transition: all 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        .timeline-bar.compact { height: 4px; border-radius: 2px; padding: 0; }
+        .timeline-bar.compact:hover { height: 16px; z-index: 50; }
+        
+        /* Stats hover tooltip */
+        .stats-row { position: relative; }
+        .stats-tooltip {
+            position: absolute;
+            left: 50%;
+            top: 100%;
+            transform: translateX(-50%);
+            margin-top: 8px;
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 12px;
+            min-width: 220px;
+            max-width: 280px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            z-index: 100;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.2s, visibility 0.2s;
+            pointer-events: none;
+            word-wrap: break-word;
+            white-space: normal;
+        }
+        .stats-tooltip::before {
+            content: '';
+            position: absolute;
+            top: -6px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-bottom: 6px solid #e5e7eb;
+        }
+        .stats-tooltip::after {
+            content: '';
+            position: absolute;
+            top: -5px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-bottom: 5px solid white;
+        }
+        .stats-row:hover .stats-tooltip {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        /* SVG Pie Chart Styles */
+        .pie-arc {
+            fill: none;
+            stroke-width: 20;
+            stroke-linecap: round;
+            cursor: pointer;
+            transition: stroke-width 0.2s ease, opacity 0.2s ease, filter 0.2s ease;
+            transform-origin: center;
+        }
+        .pie-arc:hover, .pie-arc.active {
+            stroke-width: 26;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.15));
+        }
+        .pie-arc.dimmed {
+            opacity: 0.3;
+        }
+        .stats-row.active {
+            background-color: #f4f4f5;
+            border-radius: 6px;
+        }
+        .stats-row.dimmed {
+            opacity: 0.4;
+        }
+        .pie-tooltip {
+            position: absolute;
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 12px;
+            min-width: 200px;
+            max-width: 260px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            z-index: 100;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.15s, visibility 0.15s;
+            pointer-events: none;
+            font-size: 12px;
+            word-wrap: break-word;
+            white-space: normal;
+        }
+        .pie-tooltip > div {
+            width: 100%;
+        }
+        .pie-tooltip.show {
+            opacity: 1;
+            visibility: visible;
+        }
+    </style>
+</head>
+<body class="bg-white text-gray-900 h-screen flex overflow-hidden selection:bg-gray-900 selection:text-white">
+
+    <!-- Toast -->
+    <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-4 py-2 rounded-md shadow-lg text-xs font-medium z-[100] flex items-center gap-2">
+        <i data-lucide="check-circle" class="w-4 h-4 text-emerald-400"></i><span id="toast-msg">操作成功</span>
+    </div>
+
+    <div id="mobile-sidebar-backdrop" onclick="toggleSidebar()" class="fixed inset-0 bg-gray-900/20 backdrop-blur-[1px] z-30 hidden transition-opacity opacity-0 md:hidden"></div>
+
+    <aside id="main-sidebar" class="w-64 border-r border-gray-100 flex flex-col bg-gray-50/95 md:bg-gray-50/50 fixed inset-y-0 left-0 transform -translate-x-full md:translate-x-0 md:relative z-40 sidebar-mobile cursor-default select-none shadow-xl md:shadow-none">
+        <div class="p-4 flex items-center justify-between mb-2 shrink-0">
+            <div class="flex items-center space-x-2">
+                <div class="w-6 h-6 bg-gray-900 rounded-md flex items-center justify-center text-white shadow-md">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/></svg>
+                </div>
+                <span class="font-semibold tracking-tight text-sm">Nexus</span>
+            </div>
+            <button onclick="toggleSidebar()" class="md:hidden text-gray-400 p-1"><i data-lucide="x" class="w-5 h-5"></i></button>
+        </div>
+
+        <div class="px-2 space-y-0.5 flex-1 flex flex-col overflow-y-auto no-scrollbar">
+            <button onclick="openModal(); toggleSidebar()" class="w-full flex items-center space-x-2 px-2 py-2.5 md:py-1.5 bg-white shadow-sm border border-gray-200 rounded-md text-sm font-medium text-gray-800 mb-6 hover:border-gray-300 transition-colors group">
+                <div class="bg-gray-100 rounded p-0.5 group-hover:bg-gray-200 transition-colors"><i data-lucide="plus" class="w-3.5 h-3.5 text-gray-500"></i></div><span>新建任务</span>
+            </button>
+            
+            <div class="text-xs font-medium text-gray-400 px-2 py-2 uppercase tracking-wider">视图</div>
+            <div id="nav-inbox" onclick="navigateTo('inbox')" class="cursor-pointer flex items-center space-x-2 px-2 py-3 md:py-1.5 bg-gray-200/60 text-gray-900 rounded-md text-sm font-medium transition-colors">
+                <i data-lucide="layers" class="w-4 h-4"></i><span>列表视图</span>
+                <span id="inbox-count" class="ml-auto text-xs text-gray-500 bg-gray-200/50 px-1.5 py-0.5 rounded-full">0</span>
+            </div>
+            <div id="nav-projects" onclick="navigateTo('projects')" class="cursor-pointer flex items-center space-x-2 px-2 py-3 md:py-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-900 rounded-md text-sm font-medium transition-colors">
+                <i data-lucide="kanban-square" class="w-4 h-4"></i><span>看板视图</span>
+            </div>
+             <div id="nav-calendar" onclick="navigateTo('calendar')" class="cursor-pointer flex items-center space-x-2 px-2 py-3 md:py-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-900 rounded-md text-sm font-medium transition-colors">
+                <i data-lucide="calendar" class="w-4 h-4"></i><span>日历视图</span>
+            </div>
+            <div id="nav-stats" onclick="navigateTo('stats')" class="cursor-pointer flex items-center space-x-2 px-2 py-3 md:py-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-900 rounded-md text-sm font-medium transition-colors">
+                <i data-lucide="pie-chart" class="w-4 h-4"></i><span>统计分析</span>
+            </div>
+        </div>
+
+        <!-- Footer Section: Tools & Profile -->
+        <div class="shrink-0">
+            <div class="px-2 py-2 space-y-0.5">
+                <button onclick="openImportModal()" class="w-full flex items-center space-x-2 px-2 py-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-900 rounded-md text-xs font-medium transition-colors text-left">
+                    <i data-lucide="file-json" class="w-3.5 h-3.5"></i><span>导入数据</span>
+                </button>
+                <button onclick="triggerDirectExport()" class="w-full flex items-center space-x-2 px-2 py-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-900 rounded-md text-xs font-medium transition-colors text-left">
+                    <i data-lucide="file-down" class="w-3.5 h-3.5"></i><span>导出报告</span>
+                </button>
+            </div>
+            <div class="h-px bg-gray-200 my-1 mx-3"></div>
+            <div class="px-3 pb-3 pt-1">
+                <div class="flex items-center space-x-2 p-1.5 rounded-md hover:bg-gray-100 cursor-pointer transition-colors group">
+                    <div id="user-avatar" class="w-6 h-6 rounded-full bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center text-[10px] text-white font-bold ring-2 ring-white">JD</div>
+                    <span id="user-name" contenteditable="true" onblur="saveUserName(this.innerText)" onkeydown="if(event.key === 'Enter'){event.preventDefault(); this.blur();}" class="text-xs font-medium text-gray-700 truncate min-w-[50px] outline-none border-b border-transparent focus:border-gray-300">John Doe</span>
+                    <i data-lucide="pencil" class="w-3 h-3 text-gray-300 opacity-0 group-hover:opacity-100 ml-auto"></i>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <main class="flex-1 flex flex-col min-w-0 bg-white relative">
+        <header class="h-14 border-b border-gray-100 flex items-center justify-between px-4 sm:px-6 bg-white shrink-0 z-10">
+            <div class="flex items-center space-x-3">
+                <button onclick="toggleSidebar()" class="md:hidden text-gray-500 p-1 hover:bg-gray-50 rounded-md active:bg-gray-100"><i data-lucide="menu" class="w-6 h-6"></i></button>
+                <div id="header-breadcrumbs" class="flex items-center space-x-2 text-sm text-gray-500 select-none">
+                    <span id="page-title" class="font-normal text-gray-600">列表视图</span>
+                </div>
+            </div>
+            <div class="flex items-center space-x-3">
+                <button onclick="copyAIPrompt()" class="bg-white border border-gray-200 text-gray-600 hover:text-gray-900 hover:bg-gray-50 text-xs font-medium px-2.5 py-1.5 rounded-md transition-colors shadow-sm flex items-center active:scale-95 group relative" title="复制 Prompt">
+                    <i data-lucide="sparkles" class="w-3.5 h-3.5 mr-1.5 text-amber-500 group-hover:text-amber-600"></i>
+                    <span class="hidden sm:inline">AI Prompt</span>
+                </button>
+                <button onclick="openModal()" class="bg-gray-900 hover:bg-gray-800 text-white text-xs font-medium px-3 py-1.5 rounded-md transition-colors shadow-sm flex items-center active:scale-95">
+                    <i data-lucide="plus" class="w-3.5 h-3.5 mr-1.5"></i>
+                    <span class="hidden sm:inline">新建</span>
+                </button>
+            </div>
+        </header>
+
+        <div id="view-inbox" class="flex-1 overflow-auto fade-in scroll-smooth p-4 sm:p-6 max-w-4xl mx-auto w-full">
+            <div class="mb-8">
+                <h1 class="text-2xl font-semibold text-gray-900 tracking-tight mb-1">任务列表</h1>
+                <p class="text-sm text-gray-500">查看并管理您的所有任务。</p>
+            </div>
+            <div class="space-y-8">
+                <section>
+                    <div class="flex items-center justify-between mb-3 pb-2 border-b border-gray-100">
+                        <div class="flex items-center space-x-2">
+                            <i data-lucide="circle-dot" class="w-4 h-4 text-gray-500"></i>
+                            <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide">进行中 / 待办</h3>
+                        </div>
+                        
+                        <div class="flex items-center gap-2">
+                             <!-- Filter Dropdown Trigger -->
+                             <div class="relative">
+                                <button onclick="toggleFilterDropdown('inbox-filter-dropdown')" id="inbox-filter-btn" class="flex items-center space-x-1.5 bg-gray-50 hover:bg-gray-100 text-gray-500 hover:text-gray-800 px-2 py-1 rounded text-xs font-medium transition-colors border border-transparent hover:border-gray-200">
+                                    <i data-lucide="filter" class="w-3 h-3"></i>
+                                    <span class="current-filter-label">项目筛选</span>
+                                    <i data-lucide="chevron-down" class="w-3 h-3 ml-0.5"></i>
+                                </button>
+                                <!-- Filter Dropdown Content -->
+                                <div id="inbox-filter-dropdown" class="filter-dropdown-menu hidden absolute right-0 top-full mt-2 w-56 bg-white rounded-lg shadow-xl border border-gray-100 z-50 overflow-hidden py-1 transform origin-top-right transition-all animate-in fade-in zoom-in-95 duration-100">
+                                    <div class="px-3 py-2 bg-gray-50 border-b border-gray-100 text-[10px] font-semibold text-gray-400 uppercase tracking-wide flex justify-between">
+                                        <span>选择项目</span>
+                                        <button onclick="setProjectFilter(null); closeFilterDropdowns()" class="text-blue-600 hover:text-blue-800">重置</button>
+                                    </div>
+                                    <div class="filter-list-content max-h-60 overflow-y-auto p-1 space-y-0.5">
+                                        <!-- Populated by JS -->
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Switch to Calendar View -->
+                            <button onclick="navigateTo('calendar')" class="p-1 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors" title="切换到日历">
+                                 <i data-lucide="calendar" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="inbox-list" class="space-y-1 min-h-[50px]"></div>
+                </section>
+                <section class="opacity-80">
+                    <div class="flex items-center space-x-2 mb-3 pb-2 border-b border-gray-100"><i data-lucide="check-circle-2" class="w-4 h-4 text-gray-400"></i><h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wide">已完成</h3></div>
+                    <div id="inbox-completed-list" class="space-y-1"></div>
+                </section>
+            </div>
+        </div>
+
+        <div id="view-projects" class="hidden flex-1 flex flex-col overflow-hidden fade-in bg-gray-50/50">
+            <div class="px-4 sm:px-6 py-4 flex-none"><h1 class="text-xl font-semibold text-gray-900 tracking-tight">看板视图</h1></div>
+            <div class="flex-1 overflow-x-auto overflow-y-hidden px-4 sm:px-6 pb-6 touch-pan-x">
+                <div class="h-full flex space-x-4 sm:space-x-6 min-w-max">
+                    <div class="w-72 sm:w-80 flex flex-col h-full kanban-col" data-status="todo">
+                        <div class="flex items-center justify-between mb-3 px-1"><span class="text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-gray-300"></span> 待办</span><span id="count-todo" class="text-xs text-gray-400">0</span></div>
+                        <div id="board-todo" class="flex-1 bg-gray-100/50 rounded-xl p-2 space-y-2 overflow-y-auto border border-gray-200/60" ondragover="allowDrop(event)" ondrop="drop(event, 'todo')"></div>
+                    </div>
+                    <div class="w-72 sm:w-80 flex flex-col h-full kanban-col" data-status="inprogress">
+                         <div class="flex items-center justify-between mb-3 px-1"><span class="text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-blue-400 animate-pulse"></span> 进行中</span><span id="count-inprogress" class="text-xs text-gray-400">0</span></div>
+                        <div id="board-inprogress" class="flex-1 bg-gray-100/50 rounded-xl p-2 space-y-2 overflow-y-auto border border-gray-200/60" ondragover="allowDrop(event)" ondrop="drop(event, 'inprogress')"></div>
+                    </div>
+                    <div class="w-72 sm:w-80 flex flex-col h-full kanban-col" data-status="done">
+                         <div class="flex items-center justify-between mb-3 px-1"><span class="text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-emerald-400"></span> 已完成</span><span id="count-done" class="text-xs text-gray-400">0</span></div>
+                        <div id="board-done" class="flex-1 bg-gray-100/50 rounded-xl p-2 space-y-2 overflow-y-auto border border-gray-200/60" ondragover="allowDrop(event)" ondrop="drop(event, 'done')"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="view-calendar" class="hidden flex-1 flex flex-col overflow-hidden bg-white fade-in relative">
+            <div class="px-4 sm:px-6 py-3 border-b border-gray-100 flex items-center justify-between shrink-0">
+                <div class="flex items-center space-x-2 sm:space-x-4">
+                    <!-- Switch to List View -->
+                    <button onclick="navigateTo('inbox')" class="p-1 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors mr-2" title="切换到列表">
+                         <i data-lucide="list" class="w-4 h-4"></i>
+                    </button>
+                    <div class="flex items-center space-x-1 border border-gray-200 rounded-md bg-white shadow-sm p-0.5">
+                        <button onclick="calNavigate(-1)" class="p-1 hover:bg-gray-100 rounded text-gray-500"><i data-lucide="chevron-left" class="w-4 h-4"></i></button>
+                        <button onclick="calNavigate(1)" class="p-1 hover:bg-gray-100 rounded text-gray-500"><i data-lucide="chevron-right" class="w-4 h-4"></i></button>
+                    </div>
+                    <h2 id="cal-header-title" class="text-base sm:text-lg font-semibold text-gray-900 tracking-tight w-32 sm:w-40 truncate"></h2>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <button onclick="toggleTimelineCompact()" id="btn-timeline-compact" class="hidden text-xs text-gray-500 hover:text-gray-900 flex items-center gap-1 border border-gray-200 rounded px-2 py-1"><i data-lucide="minimize-2" class="w-3 h-3"></i> 紧凑</button>
+                    <div class="flex bg-gray-100 p-0.5 rounded-lg">
+                        <button onclick="setCalView('month')" id="btn-view-month" class="px-2 sm:px-3 py-1 text-xs font-medium rounded-md shadow-sm bg-white text-gray-900 transition-all">月</button>
+                        <button onclick="setCalView('week')" id="btn-view-week" class="px-2 sm:px-3 py-1 text-xs font-medium rounded-md text-gray-500 hover:text-gray-900 hover:bg-gray-200/50 transition-all">周</button>
+                        <button onclick="setCalView('timeline')" id="btn-view-timeline" class="px-2 sm:px-3 py-1 text-xs font-medium rounded-md text-gray-500 hover:text-gray-900 hover:bg-gray-200/50 transition-all flex items-center gap-1"><i data-lucide="gantt-chart-square" class="w-3 h-3"></i> 全景</button>
+                    </div>
+
+                    <!-- Calendar Filter -->
+                    <div class="relative">
+                        <button onclick="toggleFilterDropdown('cal-filter-dropdown')" id="cal-filter-btn" class="flex items-center justify-center w-7 h-7 bg-white hover:bg-gray-50 text-gray-500 hover:text-gray-800 rounded text-xs font-medium transition-colors border border-gray-200 shadow-sm">
+                            <i data-lucide="filter" class="w-3.5 h-3.5"></i>
+                        </button>
+                        <div id="cal-filter-dropdown" class="filter-dropdown-menu hidden absolute right-0 top-full mt-2 w-56 bg-white rounded-lg shadow-xl border border-gray-100 z-50 overflow-hidden py-1 transform origin-top-right transition-all animate-in fade-in zoom-in-95 duration-100">
+                             <div class="px-3 py-2 bg-gray-50 border-b border-gray-100 text-[10px] font-semibold text-gray-400 uppercase tracking-wide flex justify-between">
+                                <span>选择项目</span>
+                                <button onclick="setProjectFilter(null); closeFilterDropdowns()" class="text-blue-600 hover:text-blue-800">重置</button>
+                            </div>
+                            <div class="filter-list-content max-h-60 overflow-y-auto p-1 space-y-0.5">
+                                <!-- Populated by JS -->
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+            <div id="cal-container" class="flex-1 flex flex-col min-h-0 select-none bg-white p-2 sm:p-4">
+                <div id="cal-grid-wrapper" class="h-full flex flex-col border-t border-l border-gray-200 rounded-sm overflow-hidden shadow-[0_0_0_1px_rgba(0,0,0,0.02)]">
+                    <div id="cal-days-header" class="grid grid-cols-7 border-b border-gray-200 shrink-0 bg-gray-50"></div>
+                    <div class="flex-1 overflow-y-auto min-h-0 bg-white relative touch-pan-x touch-pan-y" id="calendar-body"></div>
+                </div>
+                <div id="cal-timeline-wrapper" class="hidden h-full flex flex-col border border-gray-200 rounded-md overflow-hidden bg-white">
+                    <div class="timeline-grid">
+                        <div class="timeline-sidebar bg-gray-50 border-r border-gray-200 flex flex-col">
+                            <div class="h-[40px] border-b border-gray-200 flex items-center px-4 bg-white shrink-0"><span class="text-xs font-semibold text-gray-500 uppercase">项目概览</span></div>
+                            <div id="timeline-project-list" class="flex-1 overflow-hidden space-y-[1px] bg-gray-100"></div>
+                        </div>
+                        <div class="timeline-content" id="timeline-scroll-area">
+                            <div id="timeline-header" class="timeline-header-row min-w-max"></div>
+                            <div id="timeline-body" class="min-w-max bg-white"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="view-stats" class="hidden flex-1 flex flex-col overflow-auto fade-in p-4 sm:p-8 bg-gray-50/50">
+            <div class="max-w-5xl mx-auto w-full space-y-6 pb-10">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div><h1 class="text-2xl font-semibold text-gray-900 tracking-tight mb-1">项目洞察</h1><p class="text-sm text-gray-500 flex items-center gap-2">查看当前任务负载分布。</p></div>
+                    <div class="flex flex-wrap items-center gap-3">
+                        <button onclick="toggleStatsSettings()" class="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-900 bg-white px-3 py-1.5 rounded-lg border border-gray-200 shadow-sm transition-colors">
+                            <i data-lucide="settings" class="w-3.5 h-3.5"></i>
+                            <span>工时设置</span>
+                        </button>
+                        <button onclick="cleanupEmptyProjects()" class="text-xs text-gray-400 hover:text-red-500 transition-colors flex items-center gap-1" title="清理所有没有任务的空项目">
+                            <i data-lucide="trash-2" class="w-3 h-3"></i> 清理空项目
+                        </button>
+                        <button onclick="clearAllData()" class="text-xs text-gray-400 hover:text-red-600 transition-colors flex items-center gap-1" title="清除所有数据重新开始">
+                            <i data-lucide="refresh-cw" class="w-3 h-3"></i> 重置数据
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- 工时设置面板（可折叠） -->
+                <div id="stats-settings-panel" class="hidden bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                    <div class="flex items-center justify-between mb-3">
+                        <h4 class="text-sm font-medium text-gray-900">每日工时配置</h4>
+                        <button onclick="saveStatsSettings()" class="text-xs bg-gray-900 text-white px-3 py-1.5 rounded-md hover:bg-gray-800 transition-colors">保存</button>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-xs text-gray-500 mb-1.5">每日标准工作时长（小时）</label>
+                            <input type="number" id="setting-standard-hours" value="8" min="0" max="24" step="0.5"
+                                   class="w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-lg p-2 outline-none focus:border-gray-900">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-500 mb-1.5">每日额外工作时长（小时）</label>
+                            <input type="number" id="setting-overtime-hours" value="2" min="0" max="24" step="0.5"
+                                   class="w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-lg p-2 outline-none focus:border-gray-900">
+                        </div>
+                    </div>
+                    
+                    <!-- 休息时段 -->
+                    <div class="border-t border-gray-100 pt-3 mb-3">
+                        <div class="flex items-center justify-between mb-2">
+                            <label class="block text-xs text-gray-500">休息时间（从标准工时扣除）</label>
+                        </div>
+                        <div id="break-times-list" class="space-y-2">
+                            <!-- 动态生成的休息时段列表 -->
+                        </div>
+                        <button type="button" onclick="addBreakTime()" 
+                                class="mt-2 text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1">
+                            <i data-lucide="plus" class="w-3 h-3"></i> 添加休息时段
+                        </button>
+                    </div>
+                    
+                    <div class="text-[10px] text-gray-400 bg-gray-50 p-2 rounded">
+                        说明：饼图外圈 = 标准工时（已扣除休息），内圈 = 额外工时
+                    </div>
+                </div>
+                
+                <!-- 工作时长统计卡片 -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+                        <div class="flex items-center space-x-2 text-gray-500 mb-2"><i data-lucide="layers" class="w-4 h-4"></i><span class="text-xs font-medium uppercase tracking-wide">活跃项目</span></div>
+                        <div class="text-3xl font-bold text-gray-900 tracking-tight" id="stat-project-count">0</div>
+                    </div>
+                    <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+                        <div class="flex items-center space-x-2 text-gray-500 mb-2"><i data-lucide="clock" class="w-4 h-4"></i><span class="text-xs font-medium uppercase tracking-wide">涉及任务数</span></div>
+                        <div class="text-3xl font-bold text-gray-900 tracking-tight" id="stat-total-days">0</div>
+                    </div>
+                    <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+                         <div class="flex items-center space-x-2 text-gray-500 mb-2"><i data-lucide="briefcase" class="w-4 h-4"></i><span class="text-xs font-medium uppercase tracking-wide">总工作时长</span></div>
+                        <div class="text-3xl font-bold text-gray-900 tracking-tight" id="stat-task-count">0h</div>
+                    </div>
+                </div>
+                
+                <!-- 双层圆环工作统计 -->
+                <div class="bg-white p-6 sm:p-8 rounded-xl border border-gray-200 shadow-sm">
+                    <div class="flex items-center justify-between mb-6">
+                        <div>
+                            <h3 class="font-medium text-gray-900">工作时长统计</h3>
+                            <p class="text-xs text-gray-400 mt-1">外圈：实际工作占比 &nbsp;|&nbsp; 内圈：加班比例</p>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-3">
+                            <div class="flex items-center space-x-2 bg-white px-2 py-1 rounded-lg border border-gray-200 shadow-sm">
+                                <input type="date" id="stats-start-date" class="text-xs border-none outline-none text-gray-600 bg-transparent font-medium p-0 w-24" onchange="updateStatsFromInputs()">
+                                <span class="text-gray-300">-</span>
+                                <input type="date" id="stats-end-date" class="text-xs border-none outline-none text-gray-600 bg-transparent font-medium p-0 w-24" onchange="updateStatsFromInputs()">
+                            </div>
+                            <div class="bg-white p-1 rounded-lg border border-gray-200 flex shadow-sm overflow-x-auto">
+                                <button onclick="setStatsPeriod('today')" id="stats-btn-today" class="px-3 py-1 text-xs font-medium rounded-md transition-all whitespace-nowrap">今天</button>
+                                <button onclick="setStatsPeriod('week')" id="stats-btn-week" class="px-3 py-1 text-xs font-medium rounded-md transition-all whitespace-nowrap">本周</button>
+                                <button onclick="setStatsPeriod('month')" id="stats-btn-month" class="px-3 py-1 text-xs font-medium rounded-md transition-all whitespace-nowrap">本月</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="flex flex-col md:flex-row items-center gap-10 md:gap-16">
+                        <!-- 双层圆环 -->
+                        <div class="relative w-56 h-56 shrink-0 pie-entrance z-10 overflow-visible">
+                            <svg id="stats-pie-chart" class="w-full h-full overflow-visible" viewBox="-10 -10 220 220">
+                                <!-- 外圈背景 -->
+                                <circle cx="100" cy="100" r="90" fill="none" stroke="#e5e7eb" stroke-width="20"/>
+                                <!-- 内圈背景 -->
+                                <circle cx="100" cy="100" r="65" fill="none" stroke="#f3f4f6" stroke-width="15"/>
+                                <!-- 实际进度 -->
+                                <g id="pie-arcs"></g>
+                            </svg>
+                            <!-- 中心信息 -->
+                            <div class="absolute inset-0 m-auto w-28 h-28 bg-white rounded-full flex items-center justify-center shadow-sm pointer-events-none">
+                                <div class="text-center">
+                                    <div class="text-xs text-gray-400 font-medium uppercase tracking-wide mb-0.5" id="pie-center-label">工作时长</div>
+                                    <div class="text-xl font-bold text-gray-900 tracking-tight" id="pie-center-hours">0h</div>
+                                    <div class="text-[10px] text-gray-400 mt-0.5" id="pie-center-detail">目标 0h</div>
+                                </div>
+                            </div>
+                            <!-- 警示标记（超过上限时显示） -->
+                            <div id="overtime-warning" class="hidden absolute -top-2 -right-2 w-8 h-8 bg-red-500 rounded-full flex items-center justify-center shadow-lg">
+                                <i data-lucide="alert-triangle" class="w-4 h-4 text-white"></i>
+                            </div>
+                            <div id="pie-tooltip" class="pie-tooltip"></div>
+                        </div>
+                        
+                        <!-- 项目列表 -->
+                        <div class="flex-1 w-full space-y-2 pb-4 overflow-hidden" id="stats-project-list"></div>
+                    </div>
+                </div>
+                
+                <!-- 生活全景（底部简化版） -->
+                <div class="bg-white p-3 rounded-xl border border-gray-200 shadow-sm">
+                    <div class="flex items-center gap-3 text-xs text-gray-600">
+                        <span class="text-gray-400 shrink-0">时间分布:</span>
+                        <div class="flex-1 flex items-center gap-2">
+                            <div class="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden flex">
+                                <div id="life-standard-bar" class="h-full bg-blue-500 transition-all" style="width: 0%"></div>
+                                <div id="life-overtime-bar" class="h-full bg-orange-400 transition-all" style="width: 0%"></div>
+                                <div id="life-other-bar" class="h-full bg-gray-300 transition-all" style="width: 100%"></div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3 shrink-0">
+                            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-blue-500"></span>标准<span id="life-standard-text">0h</span></span>
+                            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-orange-400"></span>加班<span id="life-overtime-text">0h</span></span>
+                            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-gray-300"></span>其他<span id="life-other-text">0h</span></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Modals (Task & Import) -->
+    <div id="modal-backdrop" class="fixed inset-0 bg-gray-900/30 backdrop-blur-sm z-40 hidden transition-all duration-300 opacity-0" aria-hidden="true" onclick="closeAllModals()"></div>
+    
+    <div id="modal-panel" class="fixed inset-y-0 right-0 w-full max-w-lg bg-white shadow-2xl z-50 transform translate-x-full slide-panel flex flex-col border-l border-gray-100">
+        <input type="hidden" id="edit-task-id">
+        <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-white shrink-0">
+            <h3 class="text-sm font-semibold text-gray-900" id="modal-title">任务详情</h3>
+            <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600 p-2 hover:bg-gray-100 rounded active:bg-gray-200"><i data-lucide="x" class="w-5 h-5"></i></button>
+        </div>
+        <div class="flex-1 overflow-y-auto px-6 sm:px-8 py-6 touch-pan-y">
+            <div class="space-y-6">
+                <div class="group">
+                    <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">任务标题</label>
+                    <input id="input-title" oninput="autoSaveTask()" type="text" placeholder="需要做什么？" autocomplete="off" class="w-full text-lg font-medium text-gray-900 placeholder:text-gray-300 border-b border-gray-200 focus:border-gray-900 p-0 py-2 bg-transparent tracking-tight outline-none transition-colors rounded-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">所属项目</label>
+                    <div id="project-view-mode" class="flex items-center gap-2">
+                        <div class="relative flex-1">
+                            <select id="input-project" onchange="handleProjectChange(this.value); autoSaveTask()" autocomplete="off" class="w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-lg focus:ring-1 focus:ring-gray-900 focus:border-gray-900 block p-2.5 pr-10 appearance-none cursor-pointer outline-none"></select>
+                            <i data-lucide="chevron-down" class="w-4 h-4 text-gray-400 absolute right-3 top-3 pointer-events-none"></i>
+                        </div>
+                        <!-- 快速改色按钮 -->
+                        <div class="relative flex-shrink-0">
+                            <button type="button" onclick="toggleColorMenu()" id="quick-color-btn" class="w-8 h-8 rounded-lg cursor-pointer hover:opacity-80 transition-opacity relative overflow-hidden flex-shrink-0 block border border-gray-200" style="background-color: #9ca3af;"></button>
+                            <!-- 颜色操作菜单 -->
+                            <div id="color-menu" class="hidden absolute right-0 top-full mt-2 w-44 bg-white rounded-lg shadow-xl border border-gray-100 z-50 overflow-hidden py-1">
+                                <div class="px-3 py-2 text-xs text-gray-400 border-b border-gray-100">选择颜色</div>
+                                <div class="p-2">
+                                    <input id="quick-color-input" onchange="quickUpdateProjectColor(this.value)" type="color" class="w-full h-8 rounded cursor-pointer border border-gray-200">
+                                </div>
+                                <div class="border-t border-gray-100 mt-1 pt-1">
+                                    <button type="button" onclick="resetProjectColor()" class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2">
+                                        <span class="w-3 h-3 rounded-full bg-gray-400"></span>
+                                        重置为灰色
+                                    </button>
+                                    <button type="button" id="sync-parent-color-btn" onclick="syncParentColor()" class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 hidden">
+                                        <span class="w-3 h-3 rounded-full border border-gray-300" id="sync-parent-dot"></span>
+                                        与父项目同步
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="relative flex-shrink-0">
+                            <button type="button" onclick="toggleProjectMenu()" class="p-2.5 bg-white hover:bg-gray-50 active:bg-gray-100 rounded-lg text-gray-600 transition-colors border border-gray-200 shadow-sm"><i data-lucide="settings-2" class="w-4 h-4"></i></button>
+                            <div id="project-menu" class="hidden absolute right-0 top-full mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-100 z-50 overflow-hidden py-1 ring-1 ring-black ring-opacity-5">
+                                <button type="button" onclick="enableProjectEditMode()" class="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 active:bg-gray-100 flex items-center gap-2"><i data-lucide="pencil" class="w-3.5 h-3.5 text-gray-400"></i> 管理项目</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="project-edit-mode" class="hidden mt-1 p-1">
+                        <div class="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
+                            <button onclick="addProjectParent()" class="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center mb-4 transition-colors p-1"><i data-lucide="plus" class="w-4 h-4 mr-2"></i> 添加选项</button>
+                            <div id="project-editor-list" class="space-y-2"></div>
+                        </div>
+                        <div class="flex justify-end mt-3"><button type="button" onclick="closeProjectEditMode()" class="text-xs bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-md shadow-sm font-medium">完成</button></div>
+                    </div>
+                </div>
+                <!-- 开始时间 -->
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">开始时间</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <input id="input-start-date" onchange="autoSaveTask(); validateDateTime()" type="date" class="w-full bg-white border border-gray-200 text-gray-900 text-sm rounded-lg focus:ring-1 focus:ring-gray-900 outline-none block p-2.5">
+                        </div>
+                        <div>
+                            <select id="input-start-time" onchange="autoSaveTask(); validateDateTime()" class="w-full bg-white border border-gray-200 text-gray-900 text-sm rounded-lg focus:ring-1 focus:ring-gray-900 outline-none block p-2.5">
+                                <!-- 时间选项由JS生成 -->
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <!-- 结束时间 -->
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">结束时间</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <input id="input-end-date" onchange="autoSaveTask(); validateDateTime()" type="date" class="w-full bg-white border border-gray-200 text-gray-900 text-sm rounded-lg focus:ring-1 focus:ring-gray-900 outline-none block p-2.5">
+                        </div>
+                        <div>
+                            <select id="input-end-time" onchange="autoSaveTask(); validateDateTime()" class="w-full bg-white border border-gray-200 text-gray-900 text-sm rounded-lg focus:ring-1 focus:ring-gray-900 outline-none block p-2.5">
+                                <!-- 时间选项由JS生成 -->
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div><label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">描述</label><textarea id="input-desc" oninput="autoSaveTask()" rows="4" placeholder="添加任务详情..." class="w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-lg focus:ring-1 focus:ring-gray-900 outline-none block p-2.5 resize-none placeholder:text-gray-400"></textarea></div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">状态</label>
+                    <div class="flex space-x-4">
+                        <label class="flex items-center space-x-2 cursor-pointer p-1"><input type="radio" onchange="autoSaveTask()" name="status" value="todo" checked class="text-gray-900 focus:ring-gray-900 w-4 h-4"><span class="text-sm text-gray-700">待办</span></label>
+                        <label class="flex items-center space-x-2 cursor-pointer p-1"><input type="radio" onchange="autoSaveTask()" name="status" value="inprogress" class="text-gray-900 focus:ring-gray-900 w-4 h-4"><span class="text-sm text-gray-700">进行中</span></label>
+                        <label class="flex items-center space-x-2 cursor-pointer p-1"><input type="radio" onchange="autoSaveTask()" name="status" value="done" class="text-gray-900 focus:ring-gray-900 w-4 h-4"><span class="text-sm text-gray-700">已完成</span></label>
+                    </div>
+                </div>
+                
+                <!-- 工时配置区域（可折叠） -->
+                <div class="mt-6 border-t border-gray-100 pt-4">
+                    <div class="flex items-center justify-between cursor-pointer" onclick="toggleWorkTimeConfig()">
+                        <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide">工时配置</label>
+                        <button type="button" id="worktime-toggle-btn" class="text-xs text-gray-400 hover:text-gray-600">
+                            <span id="worktime-toggle-text">展开</span>
+                            <i data-lucide="chevron-down" id="worktime-toggle-icon" class="w-4 h-4 inline-block ml-1"></i>
+                        </button>
+                    </div>
+                    
+                    <div id="worktime-config-content" class="hidden mt-3">
+                        <!-- 默认时间 -->
+                        <div class="flex items-center gap-2 mb-3">
+                            <span class="text-sm text-gray-600">默认时间</span>
+                            <input type="number" id="input-default-hours" value="8" min="0" max="24" 
+                                   class="w-16 bg-gray-50 border border-gray-200 rounded px-2 py-1 text-sm text-center"
+                                   oninput="validateHoursInput(this)" onchange="autoSaveTask()">
+                            <span class="text-sm text-gray-600">小时</span>
+                            <button type="button" onclick="applyDefaultToAllDays()" 
+                                    class="ml-auto text-xs text-blue-600 hover:text-blue-800">应用到全部星期</button>
+                        </div>
+                        
+                        <!-- 周一~周日 -->
+                        <div class="grid grid-cols-7 gap-1 mb-4">
+                            <div class="text-center">
+                                <label class="block text-[10px] text-gray-500 mb-1">周一</label>
+                                <input type="number" data-day="mon" class="day-input w-full bg-gray-50 border border-gray-200 rounded px-1 py-1 text-sm text-center" value="8" min="0" max="24" oninput="validateHoursInput(this)" onchange="autoSaveTask()">
+                            </div>
+                            <div class="text-center">
+                                <label class="block text-[10px] text-gray-500 mb-1">周二</label>
+                                <input type="number" data-day="tue" class="day-input w-full bg-gray-50 border border-gray-200 rounded px-1 py-1 text-sm text-center" value="8" min="0" max="24" oninput="validateHoursInput(this)" onchange="autoSaveTask()">
+                            </div>
+                            <div class="text-center">
+                                <label class="block text-[10px] text-gray-500 mb-1">周三</label>
+                                <input type="number" data-day="wed" class="day-input w-full bg-gray-50 border border-gray-200 rounded px-1 py-1 text-sm text-center" value="8" min="0" max="24" oninput="validateHoursInput(this)" onchange="autoSaveTask()">
+                            </div>
+                            <div class="text-center">
+                                <label class="block text-[10px] text-gray-500 mb-1">周四</label>
+                                <input type="number" data-day="thu" class="day-input w-full bg-gray-50 border border-gray-200 rounded px-1 py-1 text-sm text-center" value="8" min="0" max="24" oninput="validateHoursInput(this)" onchange="autoSaveTask()">
+                            </div>
+                            <div class="text-center">
+                                <label class="block text-[10px] text-gray-500 mb-1">周五</label>
+                                <input type="number" data-day="fri" class="day-input w-full bg-gray-50 border border-gray-200 rounded px-1 py-1 text-sm text-center" value="8" min="0" max="24" oninput="validateHoursInput(this)" onchange="autoSaveTask()">
+                            </div>
+                            <div class="text-center">
+                                <label class="block text-[10px] text-gray-500 mb-1">周六</label>
+                                <input type="number" data-day="sat" class="day-input w-full bg-gray-50 border border-gray-200 rounded px-1 py-1 text-sm text-center" value="8" min="0" max="24" oninput="validateHoursInput(this)" onchange="autoSaveTask()">
+                            </div>
+                            <div class="text-center">
+                                <label class="block text-[10px] text-gray-500 mb-1">周日</label>
+                                <input type="number" data-day="sun" class="day-input w-full bg-gray-50 border border-gray-200 rounded px-1 py-1 text-sm text-center" value="8" min="0" max="24" oninput="validateHoursInput(this)" onchange="autoSaveTask()">
+                            </div>
+                        </div>
+                        
+                        <!-- 特殊日期 -->
+                        <div class="border-t border-gray-100 pt-3">
+                            <label class="block text-xs text-gray-500 mb-2">特殊日期计划（覆盖当天基准）</label>
+                            <div id="special-dates-list" class="space-y-2 mb-2">
+                                <!-- 动态生成的特殊日期列表 -->
+                            </div>
+                            <button type="button" onclick="addSpecialDate()" 
+                                    class="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1">
+                                <i data-lucide="plus" class="w-3 h-3"></i> 添加特殊日期
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="px-6 py-4 border-t border-gray-100 bg-gray-50/50 flex items-center justify-between shrink-0 mb-safe pb-safe">
+            <button type="button" id="btn-delete-task" onclick="deleteCurrentTask()" class="text-sm font-medium text-red-500 hover:text-red-700 px-3 py-2 hidden active:bg-red-50 rounded transition-colors select-none">删除任务</button>
+            <button onclick="saveTask()" class="bg-gray-900 hover:bg-gray-800 text-white text-xs font-medium px-6 py-2 rounded-md shadow-sm transition-transform active:scale-95 ml-auto">保存任务</button>
+        </div>
+    </div>
+
+    <div id="modal-import" class="fixed inset-0 z-50 hidden flex items-center justify-center">
+        <div class="bg-white w-full max-w-2xl mx-4 rounded-xl shadow-2xl border border-gray-100 overflow-hidden flex flex-col pointer-events-auto transform scale-95 opacity-0 transition-all duration-200" id="import-modal-content">
+            <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-white">
+                <div class="flex items-center gap-2"><i data-lucide="file-json" class="w-5 h-5 text-gray-700"></i><h3 class="text-sm font-semibold text-gray-900">导入 AI 生成任务</h3></div>
+                <button onclick="closeImportModal()" class="text-gray-400 hover:text-gray-600 p-1 rounded"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <div class="p-6 bg-gray-50/50">
+                <div class="bg-blue-50 border border-blue-100 rounded-lg p-3 mb-4 text-xs text-blue-700 flex gap-2"><i data-lucide="info" class="w-4 h-4 shrink-0 mt-0.5"></i><div>请将在 AI (ChatGPT/Claude) 中生成的 JSON 代码直接粘贴到下方。</div></div>
+                <textarea id="import-json-area" rows="10" class="w-full text-xs font-mono bg-white border border-gray-300 rounded-lg p-3 outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 resize-none" placeholder='[{"title":"任务","start":"2025-01-01","end":"2025-01-02","project":"设计","status":"todo"}]'></textarea>
+            </div>
+            <div class="px-6 py-4 border-t border-gray-100 bg-white flex justify-end gap-3">
+                <button onclick="closeImportModal()" class="px-4 py-2 text-xs font-medium text-gray-600 hover:text-gray-900">取消</button>
+                <button onclick="processImport()" class="bg-gray-900 hover:bg-gray-800 text-white px-4 py-2 rounded-md text-xs font-medium shadow-sm transition-transform active:scale-95">确认导入</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==================== 安全工具函数 ====================
+        
+        function escapeHtml(text) {
+            if (text === null || text === undefined) return '';
+            const str = String(text);
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+        
+        function generateId(prefix = 'id') {
+            if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+                return prefix + '_' + crypto.randomUUID().replace(/-/g, '').substring(0, 12);
+            }
+            const timestamp = Date.now().toString(36);
+            const random = Math.random().toString(36).substring(2, 10);
+            const random2 = Math.random().toString(36).substring(2, 6);
+            return prefix + '_' + timestamp + random + random2;
+        }
+        
+        function compareDateStr(dateStr1, operator, dateStr2) {
+            const d1 = new Date(dateStr1);
+            const d2 = new Date(dateStr2);
+            if (isNaN(d1.getTime()) || isNaN(d2.getTime())) {
+                console.warn('Invalid date comparison:', dateStr1, operator, dateStr2);
+                return false;
+            }
+            switch(operator) {
+                case '<=': return d1 <= d2;
+                case '>=': return d1 >= d2;
+                case '<': return d1 < d2;
+                case '>': return d1 > d2;
+                case '===': return d1.getTime() === d2.getTime();
+                default: return false;
+            }
+        }
+        
+        function dateDiffDays(startStr, endStr) {
+            const start = new Date(startStr);
+            const end = new Date(endStr);
+            if (isNaN(start.getTime()) || isNaN(end.getTime())) return 0;
+            return Math.ceil(Math.abs(end - start) / 86400000);
+        }
+
+        // 计算两个日期范围的重叠天数
+        function getOverlapDays(start1, end1, start2, end2) {
+            const s1 = new Date(start1);
+            const e1 = new Date(end1);
+            const s2 = new Date(start2);
+            const e2 = new Date(end2);
+            
+            const overlapStart = new Date(Math.max(s1, s2));
+            const overlapEnd = new Date(Math.min(e1, e2));
+            
+            if (overlapStart > overlapEnd) return 0;
+            return Math.ceil((overlapEnd - overlapStart) / 86400000) + 1;
+        }
+
+        // ==================== 项目路径工具函数 ====================
+
+        function getProjectPath(parentName, childName = null) {
+            if (childName && childName !== parentName) {
+                return parentName + ' > ' + childName;
+            }
+            return parentName;
+        }
+
+        function getDisplayNameFromPath(path) {
+            if (!path) return '';
+            const parts = path.split(' > ');
+            return parts.length > 1 ? parts[parts.length - 1] : path;
+        }
+
+        function getParentNameFromPath(path) {
+            if (!path) return '';
+            const parts = path.split(' > ');
+            return parts[0];
+        }
+
+        function getProjectColorByPath(path) {
+            if (!path) return '#9ca3af';
+            const parts = path.split(' > ');
+            const parentName = parts[0];
+            const p = projectList.find(proj => proj.name === parentName);
+            if (!p) return '#9ca3af';
+            // 如果路径包含子项目，优先返回子项目颜色
+            if (parts.length > 1) {
+                const childName = parts[parts.length - 1];
+                const child = (p.children || []).find(c => c.name === childName);
+                if (child && child.hex) return child.hex;
+            }
+            return p.hex;
+        }
+
+        // 获取父项目颜色（用于统计图表）
+        function getParentColorByPath(path) {
+            if (!path) return '#9ca3af';
+            const parentName = getParentNameFromPath(path);
+            const p = projectList.find(proj => proj.name === parentName);
+            return p ? p.hex : '#9ca3af';
+        }
+
+        function getProjectPathById(id) {
+            if (!id) return null;
+            
+            const parent = projectList.find(p => p.id == id);
+            if (parent) {
+                return parent.name;
+            }
+            
+            for (const p of projectList) {
+                if (p.children) {
+                    const child = p.children.find(c => c.id == id);
+                    if (child) {
+                        return getProjectPath(p.name, child.name);
+                    }
+                }
+            }
+            return null;
+        }
+
+        function taskMatchesFilter(task, filterPath) {
+            if (!filterPath) return true;
+            
+            const taskPath = task.project || '';
+            const taskParent = getParentNameFromPath(taskPath);
+            
+            if (filterPath.includes(' > ')) {
+                return taskPath === filterPath;
+            }
+            
+            return taskParent === filterPath;
+        }
+        
+        // ==================== 应用代码 ====================
+
+        const STORAGE_KEY = 'nexus_tasks';
+        const defaultTasks = []; // 空数组，不创建默认示例任务
+        const defaultProjects = [{ id: 'p1', name: '待办中心', hex: '#9ca3af', expanded: true, children: [] }, { id: 'p2', name: '设计系统', hex: '#60a5fa', expanded: true, children: [] }, { id: 'p3', name: '开发中心', hex: '#fbbf24', expanded: true, children: [{id: 'c1', name: '后端开发', hex: '#9ca3af'}, {id: 'c2', name: '前端开发', hex: '#9ca3af'}] }];
+        
+        // 获取当前日期作为默认日历日期
+        const today = new Date();
+        let tasks = defaultTasks, projectList = defaultProjects, userName = "John Doe";
+        
+        // 数据版本控制 - 强制清除旧数据（删除这行注释可重置所有数据）
+        // localStorage.removeItem('nexus_tasks'); localStorage.removeItem('nexus_projects');
+        
+        try {
+            const storedTasks = localStorage.getItem(STORAGE_KEY);
+            const storedProjects = localStorage.getItem('nexus_projects');
+            const storedUser = localStorage.getItem('nexus_username');
+            if (storedTasks) {
+                tasks = JSON.parse(storedTasks);
+                console.log('Loaded', tasks.length, 'tasks');
+                // 如果加载的任务是默认示例任务（通过id判断），清空它们
+                if (tasks.some(t => t.id && t.id.startsWith('t_default_'))) {
+                    console.log('检测到旧版示例任务，清空任务列表');
+                    tasks = [];
+                }
+            }
+            if (storedProjects) projectList = JSON.parse(storedProjects);
+            if (storedUser) userName = storedUser;
+        } catch (e) {
+            console.error('Failed to load data from storage:', e);
+        }
+        let currentCalDate = { year: today.getFullYear(), month: today.getMonth(), day: today.getDate() };
+        let calView = 'month', statsPeriod = 'month', currentView = 'inbox';
+        let currentFilterId = null; 
+        let isTimelineCompact = false;
+        let filterExpandedState = {};
+
+        // ==================== 撤销功能 ====================
+        let undoStack = [];
+        const MAX_UNDO = 20;
+        
+        function saveSnapshot(actionName) {
+            undoStack.push({
+                tasks: JSON.parse(JSON.stringify(tasks)),
+                projectList: JSON.parse(JSON.stringify(projectList)),
+                action: actionName
+            });
+            if (undoStack.length > MAX_UNDO) undoStack.shift();
+        }
+        
+        function undo() {
+            if (undoStack.length === 0) {
+                showToast("没有可撤销的操作");
+                return;
+            }
+            const prev = undoStack.pop();
+            tasks = prev.tasks;
+            projectList = prev.projectList;
+            saveTasks();
+            renderAllViews();
+            showToast(`已撤销: ${prev.action}`);
+        }
+        
+        document.addEventListener('keydown', e => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+                e.preventDefault();
+                undo();
+            }
+        }); 
+
+        projectList.forEach(p => { if(p.name === '收件箱') p.name = '待办中心'; });
+        tasks.forEach(t => { if(t.project === '收件箱') t.project = '待办中心'; });
+        
+        // 数据兼容性：为旧任务添加默认字段
+        tasks.forEach(t => {
+            if (!t.weeklyDefaults) {
+                t.weeklyDefaults = {mon: 8, tue: 8, wed: 8, thu: 8, fri: 8, sat: 8, sun: 8};
+            }
+            if (!t.dailyPlans) {
+                t.dailyPlans = {};
+            }
+        });
+
+        function saveTasks() {
+            console.log('Saving task...', tasks.length, 'tasks');
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+            localStorage.setItem('nexus_projects', JSON.stringify(projectList));
+            localStorage.setItem('nexus_username', userName);
+        }
+        
+        function saveTasksWithSnapshot(actionName) {
+            saveSnapshot(actionName);
+            saveTasks();
+        }
+
+        function initUser() {
+            document.getElementById('user-name').innerText = userName;
+            let i = "", p = userName.split(' '); i = p.length >= 2 ? p[0][0] + p[1][0] : userName.substring(0, 2);
+            document.getElementById('user-avatar').innerText = i.toUpperCase();
+        }
+        function saveUserName(n) { userName = n.trim() || "John Doe"; initUser(); saveTasks(); }
+        
+        function toggleSidebar() {
+            const s = document.getElementById('main-sidebar'), b = document.getElementById('mobile-sidebar-backdrop');
+            const c = s.classList.contains('-translate-x-full');
+            s.classList.toggle('-translate-x-full', !c); b.classList.toggle('hidden', !c);
+            if(c) { void b.offsetWidth; b.classList.remove('opacity-0'); } else { b.classList.add('opacity-0'); setTimeout(() => b.classList.add('hidden'), 300); }
+        }
+
+        function navigateTo(v) {
+            try {
+                currentView = v;
+                
+                // 如果切换到日历视图，且日历日期不在当前年份，则同步为当前日期
+                const currentYear = new Date().getFullYear();
+                if (v === 'calendar' && Math.abs(currentCalDate.year - currentYear) > 1) {
+                    const now = new Date();
+                    currentCalDate = { year: now.getFullYear(), month: now.getMonth(), day: now.getDate() };
+                }
+                
+                if(window.innerWidth < 768) { const s = document.getElementById('main-sidebar'); if (!s.classList.contains('-translate-x-full')) toggleSidebar(); }
+                ['inbox', 'projects', 'calendar', 'stats'].forEach(x => {
+                    document.getElementById(`view-${x}`).classList.add('hidden');
+                    const n = document.getElementById(`nav-${x}`);
+                    n.classList.remove('bg-gray-200/60', 'text-gray-900'); n.classList.add('text-gray-500', 'hover:bg-gray-100');
+                });
+                document.getElementById(`view-${v}`).classList.remove('hidden');
+                const a = document.getElementById(`nav-${v}`); a.classList.remove('text-gray-500', 'hover:bg-gray-100'); a.classList.add('bg-gray-200/60', 'text-gray-900');
+                document.getElementById('page-title').innerText = { 'inbox': '列表视图', 'projects': '看板视图', 'calendar': '日历视图', 'stats': '统计分析' }[v];
+                renderAllViews();
+            } catch (e) {
+                console.error('navigateTo 出错:', e);
+            }
+        }
+
+        function getProjectColor(pName) {
+            return getProjectColorByPath(pName);
+        }
+
+        function getFilteredTasks() {
+            if(!currentFilterId) return tasks;
+            
+            const filterPath = getProjectPathById(currentFilterId);
+            if(!filterPath) return tasks;
+            
+            return tasks.filter(t => taskMatchesFilter(t, filterPath));
+        }
+
+        function toggleFilterDropdown(id) {
+            const d = document.getElementById(id);
+            if(d.classList.contains('hidden')) {
+                closeFilterDropdowns();
+                renderFilterListContent();
+                d.classList.remove('hidden');
+            } else {
+                d.classList.add('hidden');
+            }
+        }
+        
+        function closeFilterDropdowns() {
+            document.querySelectorAll('.filter-dropdown-menu').forEach(el => el.classList.add('hidden'));
+        }
+
+        document.addEventListener('click', e => {
+            if (!e.target.closest('button[onclick^="toggleFilterDropdown"]') && !e.target.closest('.filter-dropdown-menu')) closeFilterDropdowns();
+        });
+
+        function setProjectFilter(id) {
+            currentFilterId = id;
+            const labels = document.querySelectorAll('.current-filter-label');
+            
+            if(!id) {
+                labels.forEach(l => l.innerText = "项目筛选");
+            } else {
+                const filterPath = getProjectPathById(id);
+                if (filterPath) {
+                    const displayName = getDisplayNameFromPath(filterPath);
+                    labels.forEach(l => l.innerText = displayName);
+                }
+            }
+            closeFilterDropdowns();
+            renderAllViews();
+        }
+        
+        function toggleFilterExpand(e, pid) {
+            e.stopPropagation();
+            filterExpandedState[pid] = !filterExpandedState[pid];
+            renderFilterListContent();
+        }
+
+        function renderFilterListContent() {
+            const containers = document.querySelectorAll('.filter-list-content');
+            containers.forEach(c => {
+                c.innerHTML = '';
+                projectList.forEach(p => {
+                    const isActive = currentFilterId === p.id;
+                    const hasChildren = p.children && p.children.length > 0;
+                    const isExpanded = filterExpandedState[p.id];
+                    const activeClass = isActive ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-100';
+                    
+                    let html = `<div class="flex items-center space-x-1 mb-0.5">`;
+                    html += `<div onclick="setProjectFilter('${escapeHtml(p.id)}')" class="cursor-pointer flex-1 flex items-center space-x-2 px-2 py-1.5 rounded-md text-xs transition-colors ${activeClass}">`;
+                    html += `<span class="w-2 h-2 rounded-full shrink-0" style="background-color:${escapeHtml(p.hex)}"></span><span class="truncate flex-1 font-medium">${escapeHtml(p.name)}</span>${isActive?'<i data-lucide="check" class="w-3 h-3"></i>':''}</div>`;
+                    
+                    if (hasChildren) {
+                         html += `<button onclick="toggleFilterExpand(event, '${escapeHtml(p.id)}')" class="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors"><i data-lucide="${isExpanded ? 'chevron-down' : 'chevron-right'}" class="w-3.5 h-3.5"></i></button>`;
+                    } else {
+                        html += `<div class="w-6"></div>`; 
+                    }
+                    html += `</div>`;
+
+                    if(hasChildren && isExpanded) {
+                        html += `<div class="ml-2 pl-2 border-l border-gray-100 space-y-0.5 animate-in fade-in slide-in-from-top-1 duration-200">`;
+                        p.children.forEach(sub => {
+                            const isSubActive = currentFilterId === sub.id;
+                            const subClass = isSubActive ? 'bg-blue-50 text-blue-700' : 'text-gray-500 hover:bg-gray-100';
+                            html += `<div onclick="setProjectFilter('${escapeHtml(sub.id)}')" class="cursor-pointer px-2 py-1 rounded-md text-xs truncate transition-colors ${subClass} flex items-center justify-between"><span class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full shrink-0" style="background-color:${escapeHtml(sub.hex)}"></span>${escapeHtml(sub.name)}</span>${isSubActive?'<i data-lucide="check" class="w-3 h-3"></i>':''}</div>`;
+                        });
+                        html += `</div>`;
+                    }
+                    c.innerHTML += html;
+                });
+            });
+            if(window.lucide) lucide.createIcons();
+        }
+
+        function renderAllViews() {
+            try {
+                if(currentView === 'inbox') renderInbox(); 
+                else if(currentView === 'projects') renderProjects();
+                else if(currentView === 'calendar') renderCalendar(); 
+                else if(currentView === 'stats') renderStats();
+                if(window.lucide) lucide.createIcons();
+                setTimeout(() => { if(['projects','calendar'].includes(currentView)) TouchDragManager.init(); }, 100);
+            } catch (e) {
+                console.error('renderAllViews 出错:', e);
+            }
+        }
+
+        function renderInbox() {
+            const l = document.getElementById('inbox-list');
+            const cl = document.getElementById('inbox-completed-list');
+            l.innerHTML = '';
+            cl.innerHTML = '';
+            let c = 0;
+            const visibleTasks = getFilteredTasks();
+            
+            visibleTasks.forEach(t => {
+                const d = t.status === 'done';
+                if(!d) c++;
+                const color = getProjectColorByPath(t.project);
+                const safeTitle = escapeHtml(t.title);
+                const displayProject = getDisplayNameFromPath(t.project);
+                const safeProject = escapeHtml(displayProject);
+                const safeColor = escapeHtml(color);
+                const dateDisplay = escapeHtml(formatDateDisplay(t.start));
+                
+                const taskEl = document.createElement('div');
+                taskEl.className = `group flex items-center p-3 hover:bg-gray-50 rounded-lg cursor-pointer border border-transparent hover:border-gray-200 transition-all ${d ? 'opacity-60' : ''}`;
+                taskEl.innerHTML = `
+                    <div class="mr-3 ${d ? 'text-gray-400' : 'text-gray-300 group-hover:text-gray-400'} shrink-0 p-1 task-check-btn"><i data-lucide="${d ? 'check-square' : 'square'}" class="w-5 h-5"></i></div>
+                    <div class="flex flex-col flex-1 min-w-0"><span class="text-sm ${d ? 'text-gray-500 line-through' : 'text-gray-700 font-medium'} truncate">${safeTitle}</span><span class="text-xs text-gray-400 truncate flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full" style="background-color:${safeColor}"></span>${safeProject} • ${dateDisplay}</span></div>
+                    <div class="ml-auto pl-2 shrink-0"><span class="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">${safeProject}</span></div>`;
+                
+                // 使用 JavaScript 绑定点击事件，避免模板字符串中的引号问题
+                taskEl.onclick = () => openModal(t.id);
+                const checkBtn = taskEl.querySelector('.task-check-btn');
+                checkBtn.onclick = (e) => { e.stopPropagation(); toggleTaskStatus(t.id); };
+                
+                if (d) {
+                    cl.appendChild(taskEl);
+                } else {
+                    l.appendChild(taskEl);
+                }
+            });
+            document.getElementById('inbox-count').innerText = c;
+        }
+
+        function renderProjects() {
+            const cols = { 'todo': document.getElementById('board-todo'), 'inprogress': document.getElementById('board-inprogress'), 'done': document.getElementById('board-done') };
+            Object.values(cols).forEach(e => e.innerHTML = ''); 
+            let counts = { 'todo': 0, 'inprogress': 0, 'done': 0 };
+            const visibleTasks = getFilteredTasks();
+            
+            visibleTasks.forEach(t => {
+                if(!cols[t.status]) return;
+                counts[t.status]++;
+                const color = getProjectColorByPath(t.project);
+                const safeTitle = escapeHtml(t.title);
+                const displayProject = getDisplayNameFromPath(t.project);
+                const safeProject = escapeHtml(displayProject);
+                const safeColor = escapeHtml(color);
+                const dateDisplay = escapeHtml(formatDateDisplay(t.start));
+                
+                const el = document.createElement('div');
+                const isDone = t.status === 'done';
+                el.className = `bg-white p-3 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-all select-none group touch-action-none kanban-item ${isDone ? 'cursor-not-allowed' : 'cursor-grab'}`;
+                el.draggable = !isDone; 
+                el.ondragstart = isDone ? null : (e) => { e.dataTransfer.setData("text/plain", t.id); }; 
+                el.onclick = () => openModal(t.id); 
+                el.setAttribute('data-task-id', t.id);
+                el.innerHTML = `<div class="text-xs text-gray-400 mb-1 flex justify-between pointer-events-none"><span class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full" style="background-color:${safeColor}"></span>${safeProject}</span><span>${dateDisplay}</span></div><div class="text-sm font-medium text-gray-800 leading-tight mb-2 pointer-events-none">${safeTitle}</div><div class="flex items-center justify-end pointer-events-none"><div class="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center text-[10px] text-gray-500 group-hover:bg-gray-200">JD</div></div>`;
+                
+                cols[t.status].appendChild(el);
+            });
+            ['todo','inprogress','done'].forEach(k => document.getElementById(`count-${k}`).innerText = counts[k]);
+        }
+
+        function setCalView(v) { 
+            calView = v; renderCalendar();
+            ['month', 'week', 'timeline'].forEach(x => { 
+                const b = document.getElementById(`btn-view-${x}`);
+                const active = 'px-2 sm:px-3 py-1 text-xs font-medium rounded-md shadow-sm bg-white text-gray-900 transition-all flex items-center gap-1';
+                const inactive = 'px-2 sm:px-3 py-1 text-xs font-medium rounded-md text-gray-500 hover:text-gray-900 hover:bg-gray-200/50 transition-all flex items-center gap-1';
+                b.className = x === v ? active : inactive; 
+            });
+            const compactBtn = document.getElementById('btn-timeline-compact');
+            if(v === 'timeline') compactBtn.classList.remove('hidden');
+            else compactBtn.classList.add('hidden');
+        }
+
+        function toggleTimelineCompact() {
+            isTimelineCompact = !isTimelineCompact;
+            const btn = document.getElementById('btn-timeline-compact');
+            if(isTimelineCompact) {
+                btn.classList.add('bg-gray-200', 'text-gray-900', 'border-gray-300');
+                btn.classList.remove('text-gray-500');
+            } else {
+                btn.classList.remove('bg-gray-200', 'text-gray-900', 'border-gray-300');
+                btn.classList.add('text-gray-500');
+            }
+            renderCalendar();
+        }
+
+        function calNavigate(d) {
+            if (calView === 'month') { 
+                currentCalDate.month += d; 
+                if(currentCalDate.month > 11) { currentCalDate.month = 0; currentCalDate.year++; } 
+                else if(currentCalDate.month < 0) { currentCalDate.month = 11; currentCalDate.year--; } 
+            } else if (calView === 'week') { 
+                const dt = new Date(currentCalDate.year, currentCalDate.month, currentCalDate.day + (d * 7)); 
+                currentCalDate.year = dt.getFullYear(); currentCalDate.month = dt.getMonth(); currentCalDate.day = dt.getDate(); 
+            } else if (calView === 'timeline') {
+                currentCalDate.month += d; 
+                if(currentCalDate.month > 11) { currentCalDate.month = 0; currentCalDate.year++; } 
+                else if(currentCalDate.month < 0) { currentCalDate.month = 11; currentCalDate.year--; } 
+            }
+            renderCalendar();
+        }
+
+        function renderCalendar() {
+            const title = document.getElementById('cal-header-title');
+            const stdGrid = document.getElementById('cal-grid-wrapper');
+            const timeGrid = document.getElementById('cal-timeline-wrapper');
+            const mN = ["一月","二月","三月","四月","五月","六月","七月","八月","九月","十月","十一月","十二月"];
+            
+            if (calView === 'timeline') {
+                stdGrid.classList.add('hidden');
+                timeGrid.classList.remove('hidden');
+                title.innerText = `${currentCalDate.year}年 ${mN[currentCalDate.month]} (全景)`;
+                renderTimelineView();
+                return;
+            }
+
+            stdGrid.classList.remove('hidden');
+            timeGrid.classList.add('hidden');
+
+            const gb = document.getElementById('calendar-body'), hr = document.getElementById('cal-days-header');
+            gb.innerHTML = ''; hr.innerHTML = '';
+            const wDs = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"];
+            let days = [], start;
+
+            if (calView === 'month') {
+                title.innerText = `${currentCalDate.year}年 ${mN[currentCalDate.month]}`;
+                const f = new Date(currentCalDate.year, currentCalDate.month, 1); start = new Date(currentCalDate.year, currentCalDate.month, 1 - (f.getDay() + 6) % 7);
+                wDs.forEach(d => {
+                    const dayEl = document.createElement('div');
+                    dayEl.className = 'py-2 text-center text-[10px] sm:text-[11px] font-semibold text-gray-400 uppercase border-r border-gray-100 last:border-r-0';
+                    dayEl.textContent = d.replace('周','');
+                    hr.appendChild(dayEl);
+                });
+                for(let i=0; i<35; i++) { const d = new Date(start); d.setDate(start.getDate() + i); days.push(d); }
+            } else {
+                const c = new Date(currentCalDate.year, currentCalDate.month, currentCalDate.day); start = new Date(c.setDate(c.getDate() - (c.getDay() + 6) % 7));
+                title.innerText = `${start.getDate()}日 - ${mN[start.getMonth()]} (本周)`;
+                for(let i=0; i<7; i++) { const d = new Date(start); d.setDate(start.getDate() + i); days.push(d); 
+                    const dayEl = document.createElement('div');
+                    dayEl.className = 'py-2 text-center text-[10px] sm:text-[11px] font-semibold text-gray-400 uppercase border-r border-gray-100 last:border-r-0';
+                    dayEl.textContent = `${wDs[i].replace('周','')} ${d.getDate()}`;
+                    hr.appendChild(dayEl);
+                }
+            }
+            gb.className = `flex-1 overflow-y-auto min-h-0 bg-white grid grid-cols-7 ${calView === 'month' ? 'grid-rows-5' : 'grid-rows-1'}`;
+            const renderS = days[0], renderE = days[days.length-1], fmt = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+            
+            // 修改：显示所有任务，包括已完成的
+            const visibleTasks = getFilteredTasks();
+            // 不过滤已完成任务，只按时间范围筛选
+            let vTasks = visibleTasks.filter(t => t.start <= fmt(renderE) && t.end >= fmt(renderS)).sort((a,b) => a.start.localeCompare(b.start) || b.end.localeCompare(a.end));
+            
+            let slots = {}; vTasks.forEach(t => {
+                let s = new Date(Math.max(new Date(t.start), renderS)), e = new Date(Math.min(new Date(t.end), renderE)), idx = 0;
+                while(true) {
+                    let ok = true; for(let d = new Date(s); d <= e; d.setDate(d.getDate()+1)) if((slots[fmt(d)] || [])[idx]) { ok = false; break; }
+                    if(ok) break; idx++;
+                }
+                for(let d = new Date(s); d <= e; d.setDate(d.getDate()+1)) { let k = fmt(d); if(!slots[k]) slots[k] = []; slots[k][idx] = t.id; }
+            });
+
+            days.forEach(dObj => {
+                const dStr = fmt(dObj), isCur = dObj.getMonth() === currentCalDate.month, bg = (calView === 'month' && !isCur) ? 'bg-gray-50/60' : 'bg-white cal-bg-pattern';
+                const cell = document.createElement('div'); cell.className = `border-b border-r border-gray-200 flex flex-col relative group transition-colors ${bg}`; cell.setAttribute('data-date', dStr);
+                cell.ondragover = (e) => { e.preventDefault(); const dur = currentDragState ? currentDragState.duration : 1; document.querySelectorAll('.drag-preview-cell').forEach(el => el.classList.remove('drag-preview-cell')); for(let i=0; i<dur; i++){ let td = new Date(dStr); td.setDate(new Date(dStr).getDate()+i); let c = document.querySelector(`div[data-date="${fmt(td)}"]`); if(c) c.classList.add('drag-preview-cell'); } };
+                cell.ondrop = (e) => handleDrop(e, dStr);
+                
+                const dateSpan = document.createElement('span');
+                dateSpan.className = `text-xs p-1.5 text-right block ${new Date().toDateString() === dObj.toDateString() ? 'font-bold text-blue-600' : 'text-gray-400'} select-none pointer-events-none`;
+                dateSpan.textContent = dObj.getDate();
+                if (calView === 'month') {
+                    cell.appendChild(dateSpan);
+                } else {
+                    cell.innerHTML = '<div class="h-1"></div>';
+                }
+                
+                const tc = document.createElement('div');
+                tc.className = "flex-1 flex flex-col gap-0.5 w-full px-0.5 pb-1 relative z-20";
+                const daySlots = slots[dStr] || [];
+                for(let i=0; i<daySlots.length; i++) {
+                    const tid = daySlots[i];
+                    if(!tid) { 
+                        const spacer = document.createElement('div');
+                        spacer.className = "h-5 sm:h-6 w-full";
+                        tc.appendChild(spacer); 
+                        continue; 
+                    }
+                    const t = vTasks.find(x => x.id == tid), isS = t.start === dStr, isE = t.end === dStr, isRowS = dStr === fmt(renderS) || dObj.getDay() === 1;
+                    const color = getProjectColorByPath(t.project);
+                    const isDone = t.status === 'done';
+                    let r=0,g=0,b=0; if(color.length===4){r=parseInt(color[1]+color[1],16);g=parseInt(color[2]+color[2],16);b=parseInt(color[3]+color[3],16);}else if(color.length===7){r=parseInt(color.slice(1,3),16);g=parseInt(color.slice(3,5),16);b=parseInt(color.slice(5,7),16);}
+                    
+                    const safeTitle = escapeHtml(t.title);
+                    
+                    const bar = document.createElement('div'); 
+                    bar.draggable = !isDone; 
+                    // 已完成任务添加特殊样式
+                    bar.className = `cal-task-bar h-5 sm:h-6 text-[9px] sm:text-[10px] font-medium flex items-center border select-none cursor-pointer ${isS&&isE?'rounded-md mx-0.5':(isS?'rounded-l-md task-segment-start':(isE?'rounded-r-md task-segment-end':'task-segment-mid'))} ${isDone ? 'done' : ''}`;
+                    
+                    // 已完成任务使用灰色背景
+                    if (isDone) {
+                        bar.style.backgroundColor = 'rgba(156, 163, 175, 0.2)';
+                        bar.style.borderColor = 'rgba(156, 163, 175, 0.3)';
+                        bar.style.color = 'rgba(107, 114, 128, 0.8)';
+                    } else {
+                        bar.style.backgroundColor = `rgba(${r},${g},${b},0.15)`; 
+                        bar.style.borderColor = `rgba(${r},${g},${b},0.25)`; 
+                        bar.style.color = 'rgba(23,23,23,0.8)';
+                    }
+                    
+                    bar.setAttribute('data-task-id', t.id); 
+                    bar.ondragstart = isDone ? null : (e) => { e.dataTransfer.setData("text/plain", t.id); currentDragState = { id: t.id, duration: dateDiffDays(t.start, t.end) + 1 }; }; 
+                    bar.onclick = (e) => { e.stopPropagation(); openModal(t.id); };
+                    
+                    const marker = document.createElement('div');
+                    marker.className = 'w-1 h-full absolute left-0 top-0 opacity-50';
+                    marker.style.backgroundColor = isDone ? '#9ca3af' : color;
+                    
+                    if (isS) {
+                        bar.appendChild(marker);
+                        if (!isDone) {
+                            const resizeHandleL = document.createElement('div');
+                            resizeHandleL.className = 'resize-handle resize-handle-l';
+                            resizeHandleL.onmousedown = (e) => initResize(e, t.id, 'start');
+                            bar.appendChild(resizeHandleL);
+                        }
+                    }
+                    
+                    if (isS || isRowS) {
+                        const titleSpan = document.createElement('span');
+                        titleSpan.className = 'px-1 pl-1.5 w-full sticky left-0 pointer-events-none';
+                        titleSpan.style.textDecoration = isDone ? 'line-through' : 'none';
+                        titleSpan.style.overflow = 'hidden';
+                        titleSpan.style.textOverflow = 'ellipsis';
+                        titleSpan.style.whiteSpace = 'nowrap';
+                        titleSpan.textContent = t.title;
+                        bar.appendChild(titleSpan);
+                    } else {
+                        bar.innerHTML += '&nbsp;';
+                    }
+                    
+                    if (isE && !isDone) {
+                        const resizeHandleR = document.createElement('div');
+                        resizeHandleR.className = 'resize-handle resize-handle-r';
+                        resizeHandleR.onmousedown = (e) => initResize(e, t.id, 'end');
+                        bar.appendChild(resizeHandleR);
+                    }
+                    
+                    tc.appendChild(bar);
+                }
+                cell.appendChild(tc); 
+                gb.appendChild(cell);
+            });
+            setTimeout(() => TouchDragManager.init(), 100);
+        }
+
+        function renderTimelineView() {
+            const pListEl = document.getElementById('timeline-project-list');
+            const hEl = document.getElementById('timeline-header');
+            const bEl = document.getElementById('timeline-body');
+            pListEl.innerHTML = ''; 
+            hEl.innerHTML = ''; 
+            bEl.innerHTML = '';
+
+            const daysInMonth = new Date(currentCalDate.year, currentCalDate.month + 1, 0).getDate();
+            const days = [];
+            for(let i=1; i<=daysInMonth; i++) days.push(new Date(currentCalDate.year, currentCalDate.month, i));
+            
+            days.forEach(d => {
+                const isWk = d.getDay() === 0 || d.getDay() === 6;
+                const dayEl = document.createElement('div');
+                dayEl.className = `timeline-day-col ${isWk?'bg-gray-50':''}`;
+                dayEl.textContent = d.getDate();
+                hEl.appendChild(dayEl);
+            });
+
+            const rowHeight = isTimelineCompact ? 'h-6' : 'h-10';
+            const barHeight = isTimelineCompact ? 'compact' : 'h-6 top-2';
+
+            const visibleTasks = getFilteredTasks();
+            const flattenedProjs = [];
+            
+            projectList.forEach(p => {
+                flattenedProjs.push({name: p.name, id: p.id, hex: p.hex, isParent: true});
+                if(p.children) p.children.forEach(c => flattenedProjs.push({name: c.name, id: c.id, hex: p.hex, isParent: false, parentName: p.name}));
+            });
+
+            flattenedProjs.forEach((p, idx) => {
+                const isParent = p.isParent;
+                const projPath = isParent ? p.name : getProjectPath(p.parentName, p.name);
+                
+                const pDiv = document.createElement('div');
+                pDiv.className = `flex items-center px-4 ${rowHeight} border-b border-gray-100 ${isParent?'bg-white':'bg-gray-50'} text-xs truncate`;
+                pDiv.innerHTML = `<span class="w-2 h-2 rounded-full mr-2 shrink-0" style="background-color:${escapeHtml(p.hex)}"></span><span class="${isParent?'font-semibold text-gray-800':'text-gray-500 pl-2'} truncate">${escapeHtml(p.name)}</span>`;
+                pListEl.appendChild(pDiv);
+
+                const rDiv = document.createElement('div');
+                rDiv.className = `timeline-row ${rowHeight} min-w-max`;
+                rDiv.style.width = (days.length * 40) + 'px';
+                
+                let gridBg = '';
+                days.forEach(d => {
+                     const isWk = d.getDay() === 0 || d.getDay() === 6;
+                     gridBg += `<div class="timeline-day-col ${isWk?'bg-gray-50/50':''} border-r border-gray-100 h-full absolute" style="left:${(d.getDate()-1)*40}px"></div>`;
+                });
+                rDiv.innerHTML = gridBg;
+
+                const pTasks = visibleTasks.filter(t => {
+                    if (isParent) {
+                        return getParentNameFromPath(t.project) === p.name;
+                    }
+                    return t.project === projPath;
+                });
+                
+                pTasks.forEach(t => {
+                    const start = new Date(t.start);
+                    const end = new Date(t.end);
+                    const mStart = days[0];
+                    const mEnd = days[days.length-1];
+                    
+                    if (start <= mEnd && end >= mStart) {
+                        const rS = start < mStart ? mStart : start;
+                        const rE = end > mEnd ? mEnd : end;
+                        
+                        const startDay = rS.getDate();
+                        const dur = Math.ceil((rE - rS) / (1000 * 60 * 60 * 24)) + 1;
+                        
+                        const left = (startDay - 1) * 40;
+                        const width = dur * 40 - 2; 
+
+                        const isDone = t.status === 'done';
+                        let hex = isDone ? '#9ca3af' : getProjectColorByPath(t.project);
+                        let r=0,g=0,b=0; 
+                        if(hex.length===4){r=parseInt(hex[1]+hex[1],16);g=parseInt(hex[2]+hex[2],16);b=parseInt(hex[3]+hex[3],16);}else if(hex.length===7){r=parseInt(hex.slice(1,3),16);g=parseInt(hex.slice(3,5),16);b=parseInt(hex.slice(5,7),16);}
+                        
+                        const bar = document.createElement('div');
+                        bar.className = `timeline-bar ${barHeight} cursor-pointer z-10 hover:z-20`;
+                        bar.style.left = (left + 1) + 'px';
+                        bar.style.width = width + 'px';
+                        bar.style.backgroundColor = `rgba(${r},${g},${b},${isTimelineCompact ? 0.8 : 0.2})`;
+                        bar.style.border = isTimelineCompact ? 'none' : `1px solid rgba(${r},${g},${b},0.3)`;
+                        bar.style.color = isTimelineCompact ? 'transparent' : '#1f2937';
+                        if (isDone) bar.style.opacity = '0.5';
+                        
+                        if(!isTimelineCompact) {
+                            bar.innerText = t.title;
+                            if (isDone) bar.style.textDecoration = 'line-through';
+                        }
+                        bar.title = `${t.title} (${t.start} - ${t.end})${isDone ? ' [已完成]' : ''}`;
+                        bar.onclick = () => openModal(t.id);
+                        
+                        rDiv.appendChild(bar);
+                    }
+                });
+                bEl.appendChild(rDiv);
+            });
+            
+            const scrollArea = document.getElementById('timeline-scroll-area');
+            const pList = document.getElementById('timeline-project-list');
+            scrollArea.onscroll = null;
+            scrollArea.onscroll = (e) => {
+                pList.scrollTop = e.target.scrollTop;
+            };
+        }
+
+        function setStatsPeriod(p) {
+            statsPeriod = p; const s = document.getElementById('stats-start-date'), e = document.getElementById('stats-end-date'), t = new Date();
+            if(p === 'today') { s.value = e.value = fmtDate(t); } 
+            else if (p === 'week') { 
+                // 本周：周一到周日
+                const dayOfWeek = t.getDay(); // 0=周日, 1=周一, ..., 6=周六
+                const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // 本周一的偏移量
+                const monday = new Date(t); monday.setDate(t.getDate() + mondayOffset);
+                const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);
+                s.value = fmtDate(monday); 
+                e.value = fmtDate(sunday); 
+            } 
+            else if (p === 'month') { s.value = fmtDate(new Date(t.getFullYear(), t.getMonth(), 1)); e.value = fmtDate(new Date(t.getFullYear(), t.getMonth() + 1, 0)); }
+            ['today', 'week', 'month'].forEach(k => { 
+                const b = document.getElementById(`stats-btn-${k}`); 
+                if (k === p) {
+                    b.className = 'px-3 py-1 text-xs font-medium rounded-md transition-all whitespace-nowrap bg-gray-100 text-gray-900 shadow-sm';
+                    b.style.backgroundColor = '#f3f4f6';
+                    b.style.color = '#111827';
+                } else {
+                    b.className = 'px-3 py-1 text-xs font-medium rounded-md transition-all whitespace-nowrap text-gray-500';
+                    b.style.backgroundColor = '';
+                    b.style.color = '';
+                }
+            });
+            renderStats();
+        }
+        function updateStatsFromInputs() { 
+            statsPeriod = 'custom'; 
+            ['today', 'week', 'month'].forEach(k => {
+                const b = document.getElementById(`stats-btn-${k}`);
+                b.className = 'px-3 py-1 text-xs font-medium rounded-md transition-all whitespace-nowrap text-gray-500';
+                b.style.backgroundColor = '';
+                b.style.color = '';
+            }); 
+            renderStats(); 
+        }
+        
+        // 工时设置存储
+        const SETTINGS_KEY = 'nexus_settings';
+        // 每日工时设置（默认：每天8小时标准，2小时加班）
+        let workSettings = { 
+            standardHours: 8, 
+            overtimeHours: 2,
+            breakTimes: [
+                { name: '午餐', hours: 1.5, enabled: true },
+                { name: '晚餐', hours: 1, enabled: false }
+            ]
+        };
+        try {
+            const stored = localStorage.getItem(SETTINGS_KEY);
+            if (stored) {
+                const parsed = JSON.parse(stored);
+                console.log('从localStorage加载设置:', parsed);
+                workSettings = { ...workSettings, ...parsed };
+                // 兼容旧数据：如果没有breakTimes初始化为默认值
+                if (!workSettings.breakTimes) {
+                    workSettings.breakTimes = [
+                        { name: '午餐', hours: 1.5, enabled: true },
+                        { name: '晚餐', hours: 1, enabled: false }
+                    ];
+                }
+                // 兼容旧数据：将旧的start/end格式转换为hours格式
+                workSettings.breakTimes.forEach(bt => {
+                    if (bt.start !== undefined && bt.end !== undefined && bt.hours === undefined) {
+                        const start = new Date('2000-01-01T' + bt.start);
+                        const end = new Date('2000-01-01T' + bt.end);
+                        let hours = (end - start) / (1000 * 60 * 60);
+                        if (hours < 0) hours += 24;
+                        bt.hours = Math.max(0, hours);
+                        delete bt.start;
+                        delete bt.end;
+                        console.log(`迁移旧数据: ${bt.name} = ${bt.hours}h`);
+                    }
+                });
+                console.log('合并后的workSettings:', workSettings);
+            }
+        } catch (e) { console.error('加载设置失败:', e); }
+        
+        function saveWorkSettings() {
+            localStorage.setItem(SETTINGS_KEY, JSON.stringify(workSettings));
+        }
+        
+        // 切换工时配置展开/收起
+        function toggleWorkTimeConfig() {
+            const content = document.getElementById('worktime-config-content');
+            const text = document.getElementById('worktime-toggle-text');
+            const icon = document.getElementById('worktime-toggle-icon');
+            
+            if (content.classList.contains('hidden')) {
+                content.classList.remove('hidden');
+                text.textContent = '收起';
+                icon.setAttribute('data-lucide', 'chevron-up');
+            } else {
+                content.classList.add('hidden');
+                text.textContent = '展开';
+                icon.setAttribute('data-lucide', 'chevron-down');
+            }
+            if (window.lucide) lucide.createIcons();
+        }
+        
+        // ==================== 每日休息时段配置 ====================
+        
+        // 计算每日休息总时长
+        function getDailyBreakHours() {
+            let totalBreak = 0;
+            (workSettings.breakTimes || []).forEach((bt, idx) => {
+                if (bt.enabled && bt.hours > 0) {
+                    totalBreak += bt.hours;
+                    console.log(`  休息${idx}: ${bt.name} = ${bt.hours}h`);
+                }
+            });
+            console.log('getDailyBreakHours: 总休息时长 =', totalBreak);
+            return totalBreak;
+        }
+        
+        // 渲染休息时段列表
+        function renderBreakTimesList() {
+            const list = document.getElementById('break-times-list');
+            if (!list) return;
+            list.innerHTML = '';
+            
+            workSettings.breakTimes.forEach((bt, index) => {
+                const row = document.createElement('div');
+                row.className = 'flex items-center gap-2 text-sm';
+                row.innerHTML = `
+                    <input type="checkbox" ${bt.enabled ? 'checked' : ''} onchange="toggleBreakTime(${index}, this.checked)" class="rounded">
+                    <input type="text" value="${bt.name}" onchange="updateBreakTime(${index}, 'name', this.value);" 
+                           class="w-20 bg-gray-50 border border-gray-200 rounded px-2 py-1 text-xs">
+                    <input type="number" value="${bt.hours}" min="0" max="24" step="0.5"
+                           onchange="updateBreakTime(${index}, 'hours', parseFloat(this.value) || 0);"
+                           class="w-20 bg-gray-50 border border-gray-200 rounded px-2 py-1 text-xs text-center">
+                    <span class="text-sm text-gray-500">小时</span>
+                    <button onclick="removeBreakTime(${index}); saveWorkSettings();" class="text-gray-400 hover:text-red-500 p-1">
+                        <i data-lucide="x" class="w-3 h-3"></i>
+                    </button>
+                `;
+                list.appendChild(row);
+            });
+            if (window.lucide) lucide.createIcons();
+        }
+        
+        // 休息时段操作函数
+        function addBreakTime() {
+            workSettings.breakTimes.push({ name: '新休息', hours: 1, enabled: true });
+            saveWorkSettings();
+            renderBreakTimesList();
+        }
+        
+        function removeBreakTime(index) {
+            workSettings.breakTimes.splice(index, 1);
+            saveWorkSettings();
+            renderBreakTimesList();
+        }
+        
+        function toggleBreakTime(index, enabled) {
+            workSettings.breakTimes[index].enabled = enabled;
+            saveWorkSettings();
+        }
+        
+        function updateBreakTime(index, field, value) {
+            workSettings.breakTimes[index][field] = value;
+            saveWorkSettings();
+        }
+        
+        function toggleStatsSettings() {
+            const panel = document.getElementById('stats-settings-panel');
+            panel.classList.toggle('hidden');
+            if (!panel.classList.contains('hidden')) {
+                console.log('toggleStatsSettings 加载值:', workSettings);
+                // 正确处理 0 值显示
+                const stdVal = workSettings.standardHours;
+                const otVal = workSettings.overtimeHours;
+                console.log('设置输入框值:', { stdVal, otVal });
+                document.getElementById('setting-standard-hours').value = stdVal !== undefined ? stdVal : 8;
+                document.getElementById('setting-overtime-hours').value = otVal !== undefined ? otVal : 2;
+                renderBreakTimesList();
+            }
+        }
+        
+        function saveStatsSettings() {
+            const stdInput = document.getElementById('setting-standard-hours').value;
+            const otInput = document.getElementById('setting-overtime-hours').value;
+            const std = parseFloat(stdInput);
+            const ot = parseFloat(otInput);
+            console.log('saveStatsSettings 输入值:', { stdInput, otInput, std, ot });
+            // 使用 isNaN 检查，允许设置为 0
+            workSettings.standardHours = isNaN(std) ? 8 : Math.max(0, Math.min(24, std));
+            workSettings.overtimeHours = isNaN(ot) ? 2 : Math.max(0, Math.min(24, ot));
+            console.log('saveStatsSettings 保存后:', workSettings);
+            // breakTimes 在修改时已实时保存，这里再次确保保存
+            saveWorkSettings();
+            document.getElementById('stats-settings-panel').classList.add('hidden');
+            renderStats();
+            showToast('设置已保存');
+        }
+        
+        function toggleLifeOverview() {
+            const content = document.getElementById('life-overview-content');
+            const icon = document.getElementById('life-overview-icon');
+            content.classList.toggle('hidden');
+            icon.style.transform = content.classList.contains('hidden') ? '' : 'rotate(180deg)';
+        }
+        
+        // ==================== 新统计逻辑：基于日期范围的工时计算 ====================
+        
+        // 获取任务在某一天的工时（扣除休息时间）
+        function getTaskHoursOnDate(task, dateStr) {
+            if (!task) return 8;
+            // 1. 检查特殊日期
+            let plannedHours = 8;
+            if (task.dailyPlans && task.dailyPlans[dateStr] !== undefined) {
+                plannedHours = task.dailyPlans[dateStr];
+            } else {
+                // 2. 使用周一~周日基准
+                const date = new Date(dateStr);
+                const dayMap = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+                const dayKey = dayMap[date.getDay()];
+                // 确保 weeklyDefaults 存在且包含所有天数
+                const defaults = task.weeklyDefaults || {mon: 8, tue: 8, wed: 8, thu: 8, fri: 8, sat: 8, sun: 8};
+                const val = defaults[dayKey];
+                plannedHours = val !== undefined ? val : 8;
+            }
+            
+            // 3. 扣除每日休息时间
+            const breakHours = getDailyBreakHours();
+            const actualHours = Math.max(0, plannedHours - breakHours);
+            
+            console.log(`getTaskHoursOnDate: ${dateStr}, 计划${plannedHours}h, 休息${breakHours}h, 实际${actualHours}h`);
+            return actualHours;
+        }
+
+        // 获取任务在日期范围内的总工时
+        function getTaskHoursInPeriod(task, startDate, endDate) {
+            if (!task || !startDate || !endDate) return 0;
+            let total = 0;
+            
+            // 计算重叠的日期范围
+            const taskStart = new Date(task.start);
+            const taskEnd = new Date(task.end);
+            const periodStart = new Date(startDate);
+            const periodEnd = new Date(endDate);
+            
+            // 取交集：任务时间和统计时间的重叠部分
+            const overlapStart = new Date(Math.max(taskStart.getTime(), periodStart.getTime()));
+            const overlapEnd = new Date(Math.min(taskEnd.getTime(), periodEnd.getTime()));
+            
+            // 如果没有重叠，返回0
+            if (overlapStart > overlapEnd) return 0;
+            
+            // 只遍历重叠的日期
+            let loopCount = 0;
+            const maxDays = 365;
+            for (let d = new Date(overlapStart); d <= overlapEnd && loopCount < maxDays; d.setDate(d.getDate() + 1), loopCount++) {
+                const dateStr = fmtDate(d);
+                total += getTaskHoursOnDate(task, dateStr);
+            }
+            return total;
+        }
+        
+        // 计算任务的完整计划时长（小时）
+        function getTaskTotalHours(task) {
+            // 检查时间字段是否存在，如果不存在，可能是旧数据，按天计算
+            const hasTime = task.startTime && task.endTime;
+            
+            let taskStart, taskEnd;
+            if (hasTime) {
+                taskStart = new Date(task.start + 'T' + task.startTime);
+                taskEnd = new Date(task.end + 'T' + task.endTime);
+            } else {
+                // 旧数据：按整天计算（默认09:30-20:00）
+                taskStart = new Date(task.start + 'T09:30');
+                taskEnd = new Date(task.end + 'T20:00');
+            }
+            
+            const hours = (taskEnd - taskStart) / (1000 * 60 * 60);
+            return Math.round(hours * 10) / 10;
+        }
+        
+        // 检查任务是否在时间段内有重叠
+        function isTaskInPeriod(task, periodStart, periodEnd) {
+            // 如果任务有精确时间，使用精确时间判断；否则使用日期判断
+            const hasTime = task.startTime && task.endTime;
+            const taskStart = hasTime 
+                ? new Date(task.start + 'T' + task.startTime)
+                : new Date(task.start + 'T00:00:00');
+            const taskEnd = hasTime
+                ? new Date(task.end + 'T' + task.endTime)
+                : new Date(task.end + 'T23:59:59');
+            const pStart = new Date(periodStart + 'T00:00:00');
+            const pEnd = new Date(periodEnd + 'T23:59:59');
+            // 有交集的条件：任务开始 <= 周期结束 且 任务结束 >= 周期开始
+            return taskStart <= pEnd && taskEnd >= pStart;
+        }
+        
+        // 调试函数：在控制台打印所有任务数据
+        function debugTasks() {
+            console.log('=== 调试任务数据 ===');
+            console.log('所有任务数量:', tasks.length);
+            console.log('任务列表:', JSON.stringify(tasks, null, 2));
+        }
+        
+        // 测试时间计算
+        function testTimeCalc(startDate, startTime, endDate, endTime) {
+            const task = { start: startDate, startTime, end: endDate, endTime };
+            const hours = getTaskTotalHours(task);
+            console.log(`测试: ${startDate} ${startTime} ~ ${endDate} ${endTime} = ${hours}小时`);
+            return hours;
+        }
+        
+        // 清除所有数据（调试用）
+        function clearAllData() {
+            if(confirm('确定要清除所有任务数据吗？此操作不可恢复！')) {
+                localStorage.removeItem('nexus_tasks');
+                localStorage.removeItem('nexus_projects');
+                tasks = [];
+                location.reload();
+            }
+        }
+        
+        // 计算日期范围内的休息总时长
+        function calculateBreakHoursInPeriod(startDate, endDate) {
+            let totalBreak = 0;
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+            const breakHoursPerDay = getDailyBreakHours();
+            
+            if (breakHoursPerDay <= 0) return 0;
+            
+            const maxDays = 365;
+            let dayCount = 0;
+            for (let d = new Date(start); d <= end && dayCount < maxDays; d.setDate(d.getDate() + 1), dayCount++) {
+                totalBreak += breakHoursPerDay;
+            }
+            console.log(`calculateBreakHoursInPeriod: ${startDate} 至 ${endDate}, 共${dayCount}天, 每日休息${breakHoursPerDay}h, 总休息${totalBreak.toFixed(1)}h`);
+            return totalBreak;
+        }
+        
+        // 计算日期范围内的额外工时
+        function calculateOvertimeInPeriod(startDate, endDate) {
+            const days = Math.ceil((new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24)) + 1;
+            return workSettings.overtimeHours * days;
+        }
+        
+        function renderStats() {
+            const list = document.getElementById('stats-project-list'),
+                  pieArcs = document.getElementById('pie-arcs'),
+                  pieTooltip = document.getElementById('pie-tooltip'),
+                  sVal = document.getElementById('stats-start-date').value,
+                  eVal = document.getElementById('stats-end-date').value;
+
+            list.innerHTML = '';
+            pieArcs.innerHTML = '';
+            if(!sVal || !eVal) return;
+            
+            console.log('renderStats: 日期范围', sVal, '至', eVal);
+            
+            // 自动清理空项目
+            const usedParentNames = new Set();
+            tasks.forEach(t => {
+                if (t.project) usedParentNames.add(getParentNameFromPath(t.project));
+            });
+            const originalLength = projectList.length;
+            let hasChanges = false;
+            projectList = projectList.filter(p => {
+                if (usedParentNames.has(p.name)) return true;
+                if (p.children && p.children.length > 0) return true;
+                if (p.name !== '新项目') return true;
+                hasChanges = true;
+                return false;
+            });
+            if (hasChanges && projectList.length !== originalLength) saveTasks();
+
+            // 筛选在时间段内有重叠的任务
+            const visibleTasks = getFilteredTasks().filter(t => isTaskInPeriod(t, sVal, eVal));
+
+            // 统计每个任务在日期范围内的工时（新逻辑）
+            const taskStats = visibleTasks.map(t => {
+                const hours = getTaskHoursInPeriod(t, sVal, eVal);
+                const parentName = getParentNameFromPath(t.project);
+                console.log(`renderStats: 任务 "${t.title}" (${t.start} 至 ${t.end}) 在范围内工时:`, hours);
+                return { ...t, hours, parentName };
+            });
+            
+            console.log('renderStats: 可见任务数', visibleTasks.length, '统计任务数', taskStats.length);
+
+            const totalTaskCount = taskStats.length;
+            const totalWorkHours = taskStats.reduce((sum, t) => sum + t.hours, 0);
+
+            // 按父项目分组统计（只包含有任务的项目）
+            const projectGroups = {};
+            // 只初始化有任务的父项目（复用之前的变量，避免重复声明）
+            const taskParentNames = new Set(taskStats.map(t => t.parentName));
+            taskParentNames.forEach(parentName => {
+                const p = projectList.find(proj => proj.name === parentName);
+                if (p) {
+                    projectGroups[p.name] = { tasks: [], totalHours: 0, hex: p.hex, isEmpty: true };
+                }
+            });
+            taskStats.forEach(t => {
+                if (projectGroups[t.parentName]) {
+                    projectGroups[t.parentName].tasks.push(t);
+                    projectGroups[t.parentName].totalHours += t.hours;
+                    projectGroups[t.parentName].isEmpty = false;
+                }
+            });
+
+            // 计算时间段天数（今天=1，本周=7，本月=实际天数）
+            const periodDays = Math.ceil((new Date(eVal + 'T00:00:00') - new Date(sVal + 'T00:00:00')) / (1000 * 60 * 60 * 24)) + 1;
+            
+            // 计算时间段内的总休息时长
+            const totalBreakHours = calculateBreakHoursInPeriod(sVal, eVal);
+            console.log('renderStats: 总休息时长:', totalBreakHours.toFixed(1) + 'h');
+            
+            // 根据每日设置计算时间段目标（扣除休息时间）
+            const dailyStandard = workSettings.standardHours; // 每日标准工时
+            const dailyOvertime = workSettings.overtimeHours; // 每日额外工时
+            const standardTarget = Math.max(0, dailyStandard * periodDays - totalBreakHours);  // 标准目标（扣除休息）
+            const overtimeTarget = dailyOvertime * periodDays;  // 额外工时目标
+            const totalTarget = standardTarget + overtimeTarget; // 总目标（圆环分母）
+            
+            // 更新顶部统计卡片
+            const activeProjectCount = Object.values(projectGroups).filter(g => !g.isEmpty).length;
+            document.getElementById('stat-project-count').innerText = activeProjectCount;
+            document.getElementById('stat-total-days').innerText = totalTaskCount;
+            document.getElementById('stat-task-count').innerText = totalWorkHours.toFixed(1) + 'h';
+
+            // 更新生活全景（简化版）- 标准/额外/其他
+            const totalHoursInPeriod = periodDays * 24;
+            // 标准工时实际值（不超过目标）
+            const standardActual = Math.min(totalWorkHours, standardTarget);
+            // 额外工时（超出标准目标的部分）
+            const overtimeActual = Math.max(0, totalWorkHours - standardTarget);
+            // 其他时间
+            const otherHours = Math.max(0, totalHoursInPeriod - totalWorkHours);
+            
+            // 更新生活全景进度条（3色：蓝=标准，橙=加班，灰=其他）
+            document.getElementById('life-standard-bar').style.width = Math.min((standardActual / totalHoursInPeriod) * 100, 100) + '%';
+            document.getElementById('life-overtime-bar').style.width = Math.min((overtimeActual / totalHoursInPeriod) * 100, 100) + '%';
+            document.getElementById('life-other-bar').style.width = Math.min((otherHours / totalHoursInPeriod) * 100, 100) + '%';
+            document.getElementById('life-standard-text').textContent = standardActual.toFixed(1) + 'h';
+            document.getElementById('life-overtime-text').textContent = overtimeActual.toFixed(1) + 'h';
+            document.getElementById('life-other-text').textContent = otherHours.toFixed(0) + 'h';
+            
+            // 更新中心显示
+            document.getElementById('pie-center-hours').innerText = totalWorkHours.toFixed(1) + 'h';
+            let detailText = '';
+            const breakInfo = totalBreakHours > 0 ? `（已扣除休息${totalBreakHours.toFixed(1)}h）` : '';
+            if (totalWorkHours > standardTarget) {
+                const ot = totalWorkHours - standardTarget;
+                if (ot > overtimeTarget) {
+                    detailText = `标准${standardTarget.toFixed(1)}h + 额外${ot.toFixed(1)}h（超${(ot-overtimeTarget).toFixed(1)}h）`;
+                } else {
+                    detailText = `标准${standardTarget.toFixed(1)}h + 额外${ot.toFixed(1)}h`;
+                }
+            } else {
+                detailText = `目标 ${standardTarget.toFixed(1)}h ${breakInfo}`;
+            }
+            document.getElementById('pie-center-detail').innerText = detailText;
+            
+            // 显示/隐藏加班警示（超过总目标时）
+            const warningEl = document.getElementById('overtime-warning');
+            if (totalWorkHours > totalTarget) {
+                warningEl.classList.remove('hidden');
+            } else {
+                warningEl.classList.add('hidden');
+            }
+
+            // SVG 弧形绘制辅助函数
+            const cx = 100, cy = 100;
+            function polarToCartesian(cx, cy, r, angleInDegrees) {
+                const angleInRadians = (angleInDegrees - 90) * Math.PI / 180.0;
+                return { x: cx + (r * Math.cos(angleInRadians)), y: cy + (r * Math.sin(angleInRadians)) };
+            }
+            function describeArc(cx, cy, r, startAngle, endAngle) {
+                if (endAngle - startAngle >= 359.99) endAngle = startAngle + 359.99;
+                const start = polarToCartesian(cx, cy, r, endAngle);
+                const end = polarToCartesian(cx, cy, r, startAngle);
+                const largeArcFlag = endAngle - startAngle <= 180 ? "0" : "1";
+                return `M ${start.x} ${start.y} A ${r} ${r} 0 ${largeArcFlag} 0 ${end.x} ${end.y}`;
+            }
+
+            // 准备项目数据（只包含有任务的项目）
+            let data = Object.keys(projectGroups).map((parentName, idx) => {
+                const g = projectGroups[parentName];
+                const p = projectList.find(proj => proj.name === parentName);
+                return {
+                    id: 'project-' + idx,
+                    name: parentName,
+                    taskCount: g.tasks.length,
+                    totalHours: g.totalHours,
+                    tasks: g.tasks,
+                    c: p ? p.hex : '#9ca3af',
+                    isEmpty: g.isEmpty
+                };
+            }).filter(d => !d.isEmpty);
+            data.sort((a, b) => b.totalHours - a.totalHours);
+
+            // 绘制双层圆环
+            // 绘制双层圆环
+            if (totalWorkHours > 0) {
+                // 外圈：各项目工作时长占总目标的比例
+                // 如果超过总目标，按总目标比例分配；如果未超，按实际比例
+                const displayTotal = Math.max(totalWorkHours, totalTarget);
+                let startAngle = 0;
+                const outerRadius = 90, outerWidth = 20;
+                
+                data.forEach((d, idx) => {
+                    const projectRatio = d.totalHours / displayTotal;
+                    const projectAngle = projectRatio * 360;
+                    if (projectAngle < 0.5) return;
+                    
+                    const endAngle = startAngle + projectAngle;
+                    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                    path.setAttribute('d', describeArc(cx, cy, outerRadius, startAngle, endAngle));
+                    path.setAttribute('stroke', d.c);
+                    path.setAttribute('stroke-width', outerWidth);
+                    path.setAttribute('fill', 'none');
+                    path.setAttribute('class', 'pie-arc transition-all duration-300');
+                    path.dataset.projectId = d.id;
+                    path.dataset.hours = d.totalHours.toFixed(1);
+                    path.dataset.projectName = d.name;
+                    
+                    // Tooltip事件
+                    path.addEventListener('mouseenter', (e) => {
+                        highlightProject(d.id);
+                        showPieTooltip(e, d);
+                    });
+                    path.addEventListener('mousemove', (e) => showPieTooltip(e, d));
+                    path.addEventListener('mouseleave', clearHighlight);
+                    
+                    pieArcs.appendChild(path);
+                    startAngle = endAngle;
+                });
+                
+                // 内圈：实际加班时长占加班目标的比例
+                if (totalWorkHours > standardTarget) {
+                    const overtimeTotal = totalWorkHours - standardTarget;
+                    // 内圈比例：加班时长 / 加班目标
+                    const overtimeRatio = Math.min(overtimeTotal / overtimeTarget, 1);
+                    const overtimeAngle = overtimeRatio * 360;
+                    
+                    const innerRadius = 65, innerWidth = 15;
+                    
+                    // 内圈显示加班比例（单一颜色）
+                    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                    path.setAttribute('d', describeArc(cx, cy, innerRadius, 0, overtimeAngle));
+                    // 超过加班目标显示红色，否则橙色
+                    path.setAttribute('stroke', overtimeTotal > overtimeTarget ? '#ef4444' : '#fb923c');
+                    path.setAttribute('stroke-width', innerWidth);
+                    path.setAttribute('fill', 'none');
+                    path.setAttribute('class', 'pie-arc transition-all duration-300');
+                    path.dataset.isOvertime = 'true';
+                    
+                    pieArcs.appendChild(path);
+                }
+            }
+
+            // Tooltip显示函数
+            function showPieTooltip(e, d) {
+                pieTooltip.innerHTML = '';
+                const taskListHtml = d.tasks.length > 0
+                    ? d.tasks.map(t => `<div class="flex justify-between py-0.5 text-xs"><span class="truncate max-w-[120px]">${escapeHtml(t.title)}</span><span class="text-gray-500 ml-2">${t.hours.toFixed(1)}h</span></div>`).join('')
+                    : '<div class="text-xs text-gray-400">无任务</div>';
+                
+                pieTooltip.innerHTML = `
+                    <div class="flex items-center gap-2 mb-1 pb-1 border-b border-gray-100">
+                        <span class="w-2 h-2 rounded-full" style="background-color: ${escapeHtml(d.c)}"></span>
+                        <span class="text-xs font-semibold text-gray-700">${escapeHtml(d.name)}</span>
+                        <span class="text-xs text-gray-400 ml-auto">${d.totalHours.toFixed(1)}h</span>
+                    </div>
+                    <div class="max-h-24 overflow-y-auto">${taskListHtml}</div>
+                `;
+                
+                const rect = document.getElementById('stats-pie-chart').getBoundingClientRect();
+                const containerRect = document.getElementById('stats-pie-chart').parentElement.getBoundingClientRect();
+                let left = e.clientX - containerRect.left + 10;
+                let top = e.clientY - containerRect.top + 10;
+                if (left + 200 > containerRect.width) left = e.clientX - containerRect.left - 200;
+                if (top + 100 > containerRect.height) top = e.clientY - containerRect.top - 100;
+                
+                pieTooltip.style.left = left + 'px';
+                pieTooltip.style.top = top + 'px';
+                pieTooltip.classList.add('show');
+            }
+
+            // 高亮控制函数
+            function highlightProject(projectId) {
+                document.querySelectorAll('.pie-arc').forEach(arc => {
+                    if (arc.dataset.projectId === projectId) {
+                        arc.style.opacity = '1';
+                        arc.style.filter = 'brightness(1.1)';
+                    } else if (!arc.dataset.isOvertime) {
+                        arc.style.opacity = '0.4';
+                    }
+                });
+                document.querySelectorAll('.stats-row').forEach(row => {
+                    if (row.dataset.projectId === projectId) {
+                        row.classList.add('bg-gray-50');
+                    } else {
+                        row.style.opacity = '0.5';
+                    }
+                });
+            }
+
+            function clearHighlight() {
+                document.querySelectorAll('.pie-arc').forEach(arc => {
+                    arc.style.opacity = '';
+                    arc.style.filter = '';
+                });
+                document.querySelectorAll('.stats-row').forEach(row => {
+                    row.classList.remove('bg-gray-50');
+                    row.style.opacity = '';
+                });
+                pieTooltip.classList.remove('show');
+            }
+
+            // 创建项目列表（简化版，无悬窗）
+            const maxDisplayHours = Math.max(totalWorkHours, standardTarget);
+            data.forEach((d, idx) => {
+                const hoursPct = maxDisplayHours > 0 ? (d.totalHours / maxDisplayHours) * 100 : 0;
+                const row = document.createElement('div');
+                row.className = 'flex items-center py-2 px-2 rounded-lg hover:bg-gray-50 transition-all';
+                
+                row.innerHTML = `
+                    <div class="flex-none w-28 sm:w-32">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2.5 h-2.5 rounded-full" style="background-color: ${escapeHtml(d.c)}"></span>
+                            <span class="text-sm font-medium text-gray-700 truncate">${escapeHtml(d.name)}</span>
+                        </div>
+                    </div>
+                    <div class="flex-1 mx-3">
+                        <div class="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+                            <div class="h-full rounded-full transition-all" style="width: ${Math.min(hoursPct, 100)}%; background-color: ${escapeHtml(d.c)}"></div>
+                        </div>
+                    </div>
+                    <div class="flex-none w-24 text-right">
+                        <span class="text-sm font-semibold text-gray-900">${d.totalHours.toFixed(1)}h</span>
+                        <span class="text-xs text-gray-400 ml-1">(${d.taskCount}个)</span>
+                    </div>
+                `;
+                
+                list.appendChild(row);
+            });
+            
+            if (window.lucide) lucide.createIcons();
+        }
+
+        // ==================== 工时配置函数 ====================
+        
+        // 验证工时输入（超过24小时变红）
+        function validateHoursInput(input) {
+            const val = parseFloat(input.value);
+            if (val > 24) {
+                input.classList.add('border-red-500', 'text-red-600');
+            } else {
+                input.classList.remove('border-red-500', 'text-red-600');
+            }
+        }
+        
+        // 将默认时间应用到周一~周日所有输入框
+        function applyDefaultToAllDays() {
+            const defaultHours = document.getElementById('input-default-hours').value;
+            document.querySelectorAll('.day-input').forEach(input => {
+                input.value = defaultHours;
+                validateHoursInput(input);
+            });
+        }
+        
+        // 加载任务时填充工时配置
+        function loadWorkTimeConfig(task) {
+            console.log('loadWorkTimeConfig:', task.weeklyDefaults, task.dailyPlans);
+            // 加载周一~周日配置
+            const defaults = task.weeklyDefaults || {mon: 8, tue: 8, wed: 8, thu: 8, fri: 8, sat: 8, sun: 8};
+            document.querySelectorAll('.day-input').forEach(input => {
+                const day = input.dataset.day;
+                const val = defaults[day];
+                input.value = val !== undefined ? val : 8;
+                console.log(`  ${day}: 加载值 =`, val, '显示值 =', input.value);
+                validateHoursInput(input);
+            });
+            
+            // 设置默认时间显示
+            const defaultInput = document.getElementById('input-default-hours');
+            if (defaultInput) {
+                const val = defaults.mon;
+                defaultInput.value = val !== undefined ? val : 8;
+            }
+            
+            // 加载特殊日期
+            const specialList = document.getElementById('special-dates-list');
+            if (specialList) {
+                specialList.innerHTML = '';
+                const dailyPlans = task.dailyPlans || {};
+                Object.entries(dailyPlans).forEach(([date, hours]) => {
+                    addSpecialDateRow(date, hours);
+                });
+            }
+        }
+        
+        // 重置工时配置（新建任务）
+        function resetWorkTimeConfig() {
+            const defaultInput = document.getElementById('input-default-hours');
+            if (defaultInput) defaultInput.value = 8;
+            document.querySelectorAll('.day-input').forEach(input => {
+                input.value = 8;
+                input.classList.remove('border-red-500', 'text-red-600');
+            });
+            const specialList = document.getElementById('special-dates-list');
+            if (specialList) specialList.innerHTML = '';
+            // 重置折叠状态为收起
+            const content = document.getElementById('worktime-config-content');
+            const text = document.getElementById('worktime-toggle-text');
+            const icon = document.getElementById('worktime-toggle-icon');
+            if (content) content.classList.add('hidden');
+            if (text) text.textContent = '展开';
+            if (icon) icon.setAttribute('data-lucide', 'chevron-down');
+        }
+        
+        // 保存工时配置到任务对象
+        function saveWorkTimeConfig() {
+            const weeklyDefaults = {};
+            document.querySelectorAll('.day-input').forEach(input => {
+                const val = parseFloat(input.value);
+                weeklyDefaults[input.dataset.day] = isNaN(val) ? 8 : val;
+            });
+            
+            const dailyPlans = {};
+            document.querySelectorAll('.special-date-item').forEach(item => {
+                const date = item.dataset.date;
+                const hoursInput = item.querySelector('.special-hours');
+                const val = hoursInput ? parseFloat(hoursInput.value) : 0;
+                const hours = isNaN(val) ? 0 : val;
+                if (date) dailyPlans[date] = hours;
+            });
+            
+            console.log('saveWorkTimeConfig:', { weeklyDefaults, dailyPlans });
+            return { weeklyDefaults, dailyPlans };
+        }
+        
+        // 添加特殊日期行
+        function addSpecialDateRow(dateStr = '', hours = 8) {
+            const list = document.getElementById('special-dates-list');
+            if (!list) return; // 防御性检查
+            const itemId = 'special-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5);
+            const row = document.createElement('div');
+            row.className = 'special-date-item flex items-center gap-2';
+            row.dataset.date = dateStr;
+            row.dataset.id = itemId;
+            row.innerHTML = `
+                <input type="date" class="special-date-input flex-1 bg-gray-50 border border-gray-200 rounded px-2 py-1 text-sm" value="${dateStr}" onchange="updateSpecialDate('${itemId}', this.value); autoSaveTask();">
+                <input type="number" class="special-hours w-16 bg-gray-50 border border-gray-200 rounded px-2 py-1 text-sm text-center" value="${hours}" min="0" max="24" oninput="validateHoursInput(this)" onchange="autoSaveTask();">
+                <span class="text-sm text-gray-500">小时</span>
+                <button type="button" onclick="removeSpecialDate('${itemId}'); autoSaveTask();" class="text-gray-400 hover:text-red-500 p-1">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            `;
+            list.appendChild(row);
+            if (window.lucide) lucide.createIcons();
+        }
+        
+        // 添加新的特殊日期
+        function addSpecialDate() {
+            const today = fmtDate(new Date());
+            addSpecialDateRow(today, 8);
+        }
+        
+        // 更新特殊日期值
+        function updateSpecialDate(itemId, newDate) {
+            const item = document.querySelector(`.special-date-item[data-id="${itemId}"]`);
+            if (item) {
+                item.dataset.date = newDate;
+            }
+        }
+        
+        // 删除特殊日期
+        function removeSpecialDate(itemId) {
+            const item = document.querySelector(`.special-date-item[data-id="${itemId}"]`);
+            if (item) {
+                item.remove();
+            }
+        }
+
+        let currentDragState = null;
+        function allowDrop(e) { e.preventDefault(); }
+        function drop(e, s) { 
+            e.preventDefault(); 
+            const t = tasks.find(x => x.id == e.dataTransfer.getData("text/plain")); 
+            if(t && t.status !== 'done' && t.status !== s) { 
+                saveSnapshot('移动任务状态');
+                t.status = s; 
+                saveTasks(); 
+                renderAllViews(); 
+            } 
+        }
+        function handleDrop(e, dStr) {
+            e.preventDefault(); document.querySelectorAll('.drag-preview-cell').forEach(el => el.classList.remove('drag-preview-cell'));
+            const t = tasks.find(x => x.id == e.dataTransfer.getData("text/plain")); currentDragState = null;
+            if(t) { 
+                // 已完成任务不能拖拽调整时间
+                if (t.status === 'done') return;
+                saveSnapshot('调整任务时间');
+                const diff = dateDiffDays(t.start, t.end); 
+                t.start = dStr; 
+                const ne = new Date(dStr); 
+                ne.setDate(ne.getDate() + diff); 
+                t.end = fmtDate(ne); 
+                saveTasks(); 
+                renderAllViews(); 
+            }
+        }
+        
+        let rState = null;
+        let resizeStartState = null;
+        function initResize(e, tid, type) { 
+            const t = tasks.find(x => x.id == tid);
+            if (t && t.status === 'done') return; // 已完成任务不能调整
+            saveSnapshot('调整任务时间范围');
+            resizeStartState = { start: t.start, end: t.end };
+            e.preventDefault(); 
+            e.stopPropagation(); 
+            rState = { tid, type }; 
+            document.body.style.cursor = 'col-resize'; 
+            document.body.classList.add('select-none-all'); 
+            window.addEventListener('mousemove', rsMove); 
+            window.addEventListener('mouseup', rsUp); 
+            window.addEventListener('touchmove', rsMove); 
+            window.addEventListener('touchend', rsUp); 
+        }
+        function rsMove(e) { 
+            if(!rState) return; 
+            const el = document.elementFromPoint(e.type.includes('touch')?e.touches[0].clientX:e.clientX, e.type.includes('touch')?e.touches[0].clientY:e.clientY); 
+            const c = el ? el.closest('div[data-date]') : null; 
+            if(c) { 
+                const nd = c.getAttribute('data-date'); 
+                const t = tasks.find(x => x.id === rState.tid); 
+                if(rState.type === 'start') { 
+                    if(compareDateStr(nd, '<=', t.end) && t.start !== nd) { 
+                        t.start = nd; 
+                        renderCalendar(); 
+                    } 
+                } else { 
+                    if(compareDateStr(nd, '>=', t.start) && t.end !== nd) { 
+                        t.end = nd; 
+                        renderCalendar(); 
+                    } 
+                } 
+            } 
+        }
+        function rsUp() { 
+            rState = null; 
+            resizeStartState = null;
+            document.body.style.cursor = ''; 
+            document.body.classList.remove('select-none-all'); 
+            window.removeEventListener('mousemove', rsMove); 
+            window.removeEventListener('mouseup', rsUp); 
+            window.removeEventListener('touchmove', rsMove); 
+            window.removeEventListener('touchend', rsUp); 
+            saveTasks(); 
+            renderAllViews(); 
+        }
+
+        const TouchDragManager = {
+            el: null, clone: null, sx: 0, sy: 0, timer: null, moveHandler: null, endHandler: null,
+            init() { 
+                document.querySelectorAll('.kanban-item, .cal-task-bar').forEach(el => { 
+                    if(!el.classList.contains('resize-handle')) {
+                        el.removeEventListener('touchstart', this.start);
+                        el.addEventListener('touchstart', this.start.bind(this), {passive:false}); 
+                    } 
+                }); 
+            },
+            start(e) { 
+                if(e.target.classList.contains('resize-handle')) return; 
+                this.el = e.currentTarget; 
+                const taskId = this.el.getAttribute('data-task-id');
+                const task = tasks.find(t => t.id == taskId);
+                // 已完成任务不能拖拽
+                if (task && task.status === 'done') {
+                    // 清理，防止残留事件
+                    this.el = null;
+                    return;
+                }
+                
+                this.sx = e.touches[0].clientX; 
+                this.sy = e.touches[0].clientY;
+                this.hasMoved = false;
+                this.timer = setTimeout(() => this.drag(e.touches[0]), 150); 
+                this.moveHandler = this.move.bind(this);
+                this.endHandler = this.end.bind(this);
+                this.el.addEventListener('touchmove', this.moveHandler, {passive:false}); 
+                this.el.addEventListener('touchend', this.endHandler); 
+            },
+            drag(t) { 
+                const r = this.el.getBoundingClientRect(); 
+                this.clone = this.el.cloneNode(true); 
+                this.clone.classList.add('touch-mirror'); 
+                this.clone.style.width = r.width + 'px'; 
+                this.clone.style.setProperty('--mirror-width', r.width + 'px'); 
+                this.clone.style.left = r.left + 'px'; 
+                this.clone.style.top = r.top + 'px'; 
+                document.body.appendChild(this.clone); 
+                this.el.classList.add('opacity-50'); 
+            },
+            move(e) { 
+                const t = e.touches[0]; 
+                const moved = Math.hypot(t.clientX-this.sx, t.clientY-this.sy) > 5;
+                if(moved) {
+                    this.hasMoved = true;
+                    if(!this.clone) clearTimeout(this.timer); 
+                }
+                if(this.clone) { 
+                    e.preventDefault(); 
+                    this.clone.style.transform = `translate(${t.clientX-this.sx}px, ${t.clientY-this.sy}px) scale(1.02)`; 
+                    if(currentView==='projects'){ 
+                        document.querySelectorAll('.kanban-col').forEach(c => c.classList.remove('bg-gray-100')); 
+                        const el = document.elementFromPoint(t.clientX, t.clientY); const kanbanCol = el ? el.closest('.kanban-col') : null; 
+                        if(kanbanCol) kanbanCol.classList.add('bg-gray-100'); 
+                    } 
+                } 
+            },
+            end(e) { 
+                clearTimeout(this.timer);
+                // 如果没有真正开始拖拽（没有 clone），直接清理
+                if(!this.clone && !this.hasMoved) {
+                    this.el.removeEventListener('touchmove', this.moveHandler); 
+                    this.el.removeEventListener('touchend', this.endHandler); 
+                    this.el = null;
+                    return;
+                }
+                if(this.clone) { 
+                    const t = e.changedTouches[0]; 
+                    this.clone.style.display='none'; 
+                    const el = document.elementFromPoint(t.clientX, t.clientY); 
+                    this.clone.style.display='block'; 
+                    if(currentView==='projects'){ 
+                        const c = el ? el.closest('.kanban-col') : null; 
+                        if(c) { 
+                            const task = tasks.find(x => x.id == this.el.getAttribute('data-task-id')); 
+                            if(task && task.status !== c.dataset.status) { 
+                                task.status = c.dataset.status; 
+                                saveTasks(); 
+                            } 
+                        } 
+                        document.querySelectorAll('.kanban-col').forEach(c => c.classList.remove('bg-gray-100')); 
+                    } else if(currentView==='calendar'){ 
+                        const c = el ? el.closest('div[data-date]') : null; 
+                        if(c) { 
+                            const task = tasks.find(x => x.id == this.el.getAttribute('data-task-id')); 
+                            if(task) { 
+                                const d = dateDiffDays(task.start, task.end); 
+                                task.start = c.getAttribute('data-date'); 
+                                const ne = new Date(task.start); 
+                                ne.setDate(ne.getDate()+d); 
+                                task.end = fmtDate(ne); 
+                                saveTasks(); 
+                            } 
+                        } 
+                    } 
+                    this.clone.remove(); 
+                    this.clone=null; 
+                    this.el.classList.remove('opacity-50'); 
+                    renderAllViews(); 
+                } 
+                this.el.removeEventListener('touchmove', this.moveHandler); 
+                this.el.removeEventListener('touchend', this.endHandler); 
+                this.el = null; 
+            }
+        };
+
+        function fmtDate(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+        function formatDateDisplay(s) { const [y, m, d] = s.split('-').map(Number); return new Date(y, m-1, d).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' }); }
+
+        function renderProjectOptions() {
+            const s = document.getElementById('input-project');
+            const currentValue = s.value; // 保存当前选中的值
+            s.innerHTML = '';
+            projectList.forEach(p => { 
+                // 父项目作为普通选项（加粗）
+                const parentOption = new Option(p.name, p.name);
+                parentOption.style.color = p.hex;
+                parentOption.style.fontWeight = '600';
+                s.appendChild(parentOption);
+                
+                // 子项目选项（使用不间断空格缩进，普通字重）
+                if(p.children && p.children.length) {
+                    p.children.forEach(c => {
+                        const path = getProjectPath(p.name, c.name);
+                        // 使用 \u00A0（不间断空格）实现缩进
+                        const childOption = new Option('\u00A0\u00A0\u00A0\u00A0' + c.name, path);
+                        childOption.style.color = c.hex;
+                        s.appendChild(childOption);
+                    });
+                }
+            });
+            // 恢复选中的值
+            if (currentValue) s.value = currentValue;
+        }
+        
+        function updateProjectColorIndicators() {
+            const select = document.getElementById('input-project');
+            const selectedValue = select.value;
+            const color = getProjectColorByPath(selectedValue);
+            
+            // 更新快速改色按钮
+            const btn = document.getElementById('quick-color-btn');
+            const input = document.getElementById('quick-color-input');
+            if (btn) btn.style.backgroundColor = color;
+            if (input) input.value = color;
+        }
+        
+        function quickUpdateProjectColor(newColor) {
+            const select = document.getElementById('input-project');
+            const selectedValue = select.value;
+            if (!selectedValue) return;
+            
+            saveSnapshot('快速修改项目颜色');
+            
+            // 判断是父项目还是子项目
+            if (selectedValue.includes(' > ')) {
+                // 修改子项目颜色
+                const parts = selectedValue.split(' > ');
+                const parentName = parts[0];
+                const childName = parts[parts.length - 1];
+                const parent = projectList.find(p => p.name === parentName);
+                if (parent && parent.children) {
+                    const child = parent.children.find(c => c.name === childName);
+                    if (child) child.hex = newColor;
+                }
+            } else {
+                // 修改父项目颜色
+                const parent = projectList.find(p => p.name === selectedValue);
+                if (parent) parent.hex = newColor;
+            }
+            
+            saveTasks();
+            // 重新渲染下拉选项以显示新颜色
+            renderProjectOptions();
+            // 立即更新颜色按钮显示
+            const btn = document.getElementById('quick-color-btn');
+            if (btn) btn.style.backgroundColor = newColor;
+            renderAllViews();
+            showToast('项目颜色已更新');
+        }
+        function toggleProjectMenu() { document.getElementById('project-menu').classList.toggle('hidden'); }
+        document.addEventListener('click', e => { 
+            const menuBtn = document.querySelector('button[onclick*="toggleProjectMenu"]');
+            if ((!menuBtn || !menuBtn.contains(e.target)) && !document.getElementById('project-menu').contains(e.target)) {
+                document.getElementById('project-menu').classList.add('hidden'); 
+            }
+        });
+        function enableProjectEditMode() { document.getElementById('project-menu').classList.add('hidden'); document.getElementById('project-view-mode').classList.add('hidden'); document.getElementById('project-edit-mode').classList.remove('hidden'); renderPEList(); }
+        function closeProjectEditMode() { document.getElementById('project-edit-mode').classList.add('hidden'); document.getElementById('project-view-mode').classList.remove('hidden'); renderProjectOptions(); renderAllViews(); renderFilterListContent(); }
+        
+        function renderPEList() {
+            const l = document.getElementById('project-editor-list');
+            l.innerHTML = '';
+            projectList.forEach(p => {
+                const safeName = escapeHtml(p.name);
+                const safeHex = escapeHtml(p.hex);
+                const safeId = escapeHtml(p.id);
+                
+                let html = `<div class="group pt-2 pb-1 border-b border-gray-50">
+                    <div class="flex items-center gap-2 mb-1">
+                        <button onclick="toggleExpand('${safeId}')" class="text-gray-400 p-2"><i data-lucide="${p.expanded?'chevron-down':'chevron-right'}" class="w-4 h-4"></i></button>
+                        <div class="flex-1 flex items-center gap-2">
+                            <input type="color" value="${safeHex}" oninput="updateProjectColor('${safeId}', this.value)" class="w-6 h-6 shrink-0">
+                            <input type="text" value="${safeName}" onchange="updateProjectName('${safeId}',null,this.value)" class="w-full text-sm bg-gray-50 border-transparent focus:border-gray-400 rounded px-2 py-1.5 outline-none font-medium text-gray-800">
+                        </div>
+                        <button onclick="addChildToParent('${safeId}')" class="text-gray-400 p-1 hover:text-blue-500"><i data-lucide="plus" class="w-4 h-4"></i></button>
+                        <button onclick="removeProjectParent('${safeId}')" class="text-gray-300 hover:text-red-500 p-2.5"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                    </div>`;
+                
+                if(p.expanded && p.children && p.children.length > 0) {
+                    html += `<div class="ml-8 border-l border-gray-100 pl-3 space-y-2 mb-2">`;
+                    p.children.forEach(c => {
+                        const safeChildName = escapeHtml(c.name);
+                        const safeChildId = escapeHtml(c.id);
+                        const safeChildHex = escapeHtml(c.hex || p.hex);
+                        html += `<div class="flex items-center gap-2">
+                            <input type="color" value="${safeChildHex}" oninput="updateChildColor('${safeId}','${safeChildId}',this.value)" class="w-5 h-5 shrink-0">
+                            <input type="text" value="${safeChildName}" onchange="updateProjectName('${safeId}','${safeChildId}',this.value)" class="flex-1 text-sm bg-white border border-gray-100 focus:border-gray-400 rounded px-2 py-1.5 outline-none text-gray-600">
+                            <button onclick="removeChildItem('${safeId}','${safeChildId}')" class="text-gray-200 hover:text-red-500 p-2"><i data-lucide="x" class="w-4 h-4"></i></button>
+                        </div>`;
+                    });
+                    html += `</div>`;
+                }
+                html += `</div>`;
+                l.insertAdjacentHTML('beforeend', html);
+            });
+            if(window.lucide) lucide.createIcons();
+        }
+        
+        function toggleExpand(id) { const p = projectList.find(x => x.id == id); if(p) { p.expanded = !p.expanded; renderPEList(); } }
+        function addProjectParent() { 
+            saveSnapshot('添加父项目');
+            projectList.push({ id: generateId('p'), name: '新项目', hex: '#9ca3af', children: [], expanded: true }); 
+            saveTasks(); renderPEList(); 
+        }
+        function addChildToParent(id) { 
+            const p = projectList.find(x => x.id == id); 
+            if(p) { 
+                saveSnapshot('添加子项目');
+                p.expanded = true; 
+                if(!p.children) p.children = []; 
+                p.children.push({ id: generateId('c'), name: '新子项', hex: '#9ca3af' }); // 默认灰色
+                saveTasks(); renderPEList(); 
+            } 
+        }
+        function removeProjectParent(id) { setTimeout(() => { if(confirm('删除此项目组？')) { saveSnapshot('删除父项目'); projectList = projectList.filter(p => p.id !== id); saveTasks(); renderPEList(); } }, 10); }
+        function removeChildItem(pId, cId) { 
+            const p = projectList.find(x => x.id === pId); 
+            if(p) { 
+                saveSnapshot('删除子项目');
+                p.children = p.children.filter(c => c.id !== cId); 
+                saveTasks(); renderPEList(); 
+            } 
+        }
+        
+        function updateProjectName(pId, cId, val) { 
+            const p = projectList.find(x => x.id === pId); 
+            if(!p) return; 
+            const t = cId ? p.children.find(x => x.id === cId) : p; 
+            if (!t || t.name === val) return;
+            saveSnapshot(cId ? '修改子项目名称' : '修改父项目名称');
+            const oldName = t.name; 
+            const newName = val;
+            t.name = newName; 
+            
+            tasks.forEach(task => {
+                if (cId) {
+                    const oldPath = getProjectPath(p.name, oldName);
+                    const newPath = getProjectPath(p.name, newName);
+                    if(task.project === oldPath) {
+                        task.project = newPath;
+                    }
+                } else {
+                    if (task.project === oldName) {
+                        task.project = newName;
+                    } else if (task.project.startsWith(oldName + ' > ')) {
+                        task.project = task.project.replace(oldName + ' > ', newName + ' > ');
+                    }
+                }
+            }); 
+            saveTasks(); 
+        }
+        
+        function updateProjectColor(pId, val) {
+            const p = projectList.find(x => x.id === pId);
+            if(p && p.hex !== val) {
+                saveSnapshot('修改父项目颜色');
+                p.hex = val;
+                saveTasks();
+                renderAllViews();
+            }
+        }
+        function updateChildColor(pId, cId, val) {
+            const p = projectList.find(x => x.id === pId);
+            if(p) {
+                const c = (p.children||[]).find(x => x.id === cId);
+                if(c && c.hex !== val) {
+                    saveSnapshot('修改子项目颜色');
+                    c.hex = val;
+                    saveTasks();
+                    renderAllViews();
+                }
+            }
+        }
+
+        // 生成时间选择器选项（00:00 - 23:30，每30分钟一个）
+        function generateTimeOptions() {
+            const times = [];
+            for (let h = 0; h < 24; h++) {
+                times.push(`${String(h).padStart(2, '0')}:00`);
+                times.push(`${String(h).padStart(2, '0')}:30`);
+            }
+            return times;
+        }
+        
+        // 填充时间选择器
+        function populateTimeSelects() {
+            try {
+                const times = generateTimeOptions();
+                const startSelect = document.getElementById('input-start-time');
+                const endSelect = document.getElementById('input-end-time');
+                
+                if (!startSelect || !endSelect) {
+                    console.error('时间选择器元素未找到');
+                    return;
+                }
+                
+                // 保存当前值
+                const startValue = startSelect.value;
+                const endValue = endSelect.value;
+                
+                // 生成选项HTML
+                const optionsHtml = times.map(t => `<option value="${t}">${t}</option>`).join('');
+                
+                startSelect.innerHTML = optionsHtml;
+                endSelect.innerHTML = optionsHtml;
+                
+                // 恢复值或设置默认值
+                startSelect.value = startValue || '09:30';
+                endSelect.value = endValue || '20:00';
+                
+                console.log('时间选择器已填充');
+            } catch (e) {
+                console.error('填充时间选择器出错:', e);
+            }
+        }
+
+        let modalCloseTimer = null;
+        function openModal(id) {
+            if(modalCloseTimer) { clearTimeout(modalCloseTimer); modalCloseTimer = null; }
+            const importModal = document.getElementById('modal-import');
+            const importContent = document.getElementById('import-modal-content');
+            if(!importModal.classList.contains('hidden')) { importModal.classList.add('hidden'); importContent.classList.remove('scale-100', 'opacity-100'); importContent.classList.add('scale-95', 'opacity-0'); }
+            const b = document.getElementById('modal-backdrop');
+            const p = document.getElementById('modal-panel');
+            document.getElementById('project-edit-mode').classList.add('hidden'); 
+            document.getElementById('project-view-mode').classList.remove('hidden'); 
+            renderProjectOptions();
+            populateTimeSelects(); // 填充时间选择器选项
+            b.classList.remove('hidden'); void b.offsetWidth; b.classList.remove('opacity-0'); p.classList.remove('translate-x-full');
+            
+            if (id) {
+                const t = tasks.find(x => x.id == id); 
+                document.getElementById('edit-task-id').value = id; 
+                document.getElementById('modal-title').innerText = "任务详情"; 
+                document.getElementById('btn-delete-task').classList.remove('hidden');
+                document.getElementById('input-title').value = t.title; 
+                document.getElementById('input-project').value = t.project; 
+                document.getElementById('input-desc').value = t.desc||''; 
+                // 新的时间字段
+                document.getElementById('input-start-date').value = t.start; 
+                document.getElementById('input-start-time').value = t.startTime || '09:30';
+                document.getElementById('input-end-date').value = t.end;
+                document.getElementById('input-end-time').value = t.endTime || '20:00';
+                document.getElementsByName('status').forEach(r => r.checked = r.value === t.status);
+                // 加载工时配置
+                loadWorkTimeConfig(t);
+            } else {
+                document.getElementById('edit-task-id').value = ''; 
+                document.getElementById('modal-title').innerText = "新建任务"; 
+                document.getElementById('btn-delete-task').classList.add('hidden');
+                document.getElementById('input-title').value = ''; 
+                document.getElementById('input-desc').value = ''; 
+                const d = fmtDate(new Date()); 
+                document.getElementById('input-start-date').value = d; 
+                document.getElementById('input-start-time').value = '09:30';
+                document.getElementById('input-end-date').value = d; 
+                document.getElementById('input-end-time').value = '20:00';
+                document.getElementsByName('status')[0].checked = true;
+                // 重置工时配置
+                resetWorkTimeConfig();
+                updateProjectColorIndicators();
+                updateSyncParentButton();
+                setTimeout(() => document.getElementById('input-title').focus(), 100);
+            }
+        }
+        function handleProjectChange(pName) { 
+            // 直接使用传入的值更新颜色指示器
+            const color = getProjectColorByPath(pName);
+            const btn = document.getElementById('quick-color-btn');
+            const input = document.getElementById('quick-color-input');
+            if (btn) btn.style.backgroundColor = color;
+            if (input) input.value = color;
+            
+            // 更新颜色菜单中的"与父项目同步"按钮可见性
+            updateSyncParentButton();
+        }
+        
+        function toggleColorMenu() {
+            const menu = document.getElementById('color-menu');
+            const isHidden = menu.classList.contains('hidden');
+            
+            // 关闭其他菜单
+            document.getElementById('project-menu').classList.add('hidden');
+            
+            if (isHidden) {
+                menu.classList.remove('hidden');
+                updateSyncParentButton();
+            } else {
+                menu.classList.add('hidden');
+            }
+        }
+        
+        function updateSyncParentButton() {
+            const select = document.getElementById('input-project');
+            const selectedValue = select.value;
+            const syncBtn = document.getElementById('sync-parent-color-btn');
+            const syncDot = document.getElementById('sync-parent-dot');
+            
+            if (!selectedValue || !syncBtn) return;
+            
+            // 如果是子项目，显示"与父项目同步"按钮
+            if (selectedValue.includes(' > ')) {
+                const parts = selectedValue.split(' > ');
+                const parentName = parts[0];
+                const parent = projectList.find(p => p.name === parentName);
+                if (parent) {
+                    syncDot.style.backgroundColor = parent.hex;
+                    syncBtn.classList.remove('hidden');
+                }
+            } else {
+                syncBtn.classList.add('hidden');
+            }
+        }
+        
+        function resetProjectColor() {
+            quickUpdateProjectColor('#9ca3af');
+            document.getElementById('color-menu').classList.add('hidden');
+        }
+        
+        function syncParentColor() {
+            const select = document.getElementById('input-project');
+            const selectedValue = select.value;
+            if (!selectedValue || !selectedValue.includes(' > ')) return;
+            
+            const parts = selectedValue.split(' > ');
+            const parentName = parts[0];
+            const parent = projectList.find(p => p.name === parentName);
+            if (parent) {
+                quickUpdateProjectColor(parent.hex);
+            }
+            document.getElementById('color-menu').classList.add('hidden');
+        }
+        
+        // 点击其他地方关闭颜色菜单
+        document.addEventListener('click', e => {
+            const colorMenu = document.getElementById('color-menu');
+            const colorBtn = document.getElementById('quick-color-btn');
+            if (colorMenu && !colorMenu.contains(e.target) && !colorBtn.contains(e.target)) {
+                colorMenu.classList.add('hidden');
+            }
+        });
+
+        function closeAllModals() { closeModal(); closeImportModal(); }
+        function closeModal() {
+            const b = document.getElementById('modal-backdrop'); 
+            const p = document.getElementById('modal-panel'); 
+            p.classList.add('translate-x-full'); 
+            if(document.getElementById('modal-import').classList.contains('hidden')) { 
+                b.classList.add('opacity-0'); 
+                modalCloseTimer = setTimeout(() => { b.classList.add('hidden'); }, 300); 
+            }
+        }
+        function openImportModal() {
+            if(modalCloseTimer) { clearTimeout(modalCloseTimer); modalCloseTimer = null; }
+            document.getElementById('modal-panel').classList.add('translate-x-full');
+            const b = document.getElementById('modal-backdrop'); 
+            const m = document.getElementById('modal-import'); 
+            const c = document.getElementById('import-modal-content');
+            b.classList.remove('hidden'); void b.offsetWidth; b.classList.remove('opacity-0'); m.classList.remove('hidden');
+            setTimeout(() => { c.classList.remove('scale-95', 'opacity-0'); c.classList.add('scale-100', 'opacity-100'); }, 10);
+            if(window.innerWidth < 768) { const s = document.getElementById('main-sidebar'); if (!s.classList.contains('-translate-x-full')) toggleSidebar(); }
+        }
+        function closeImportModal() {
+             const b = document.getElementById('modal-backdrop'); 
+             const m = document.getElementById('modal-import'); 
+             const c = document.getElementById('import-modal-content');
+             c.classList.remove('scale-100', 'opacity-100'); c.classList.add('scale-95', 'opacity-0');
+             if(document.getElementById('modal-panel').classList.contains('translate-x-full')) { 
+                 b.classList.add('opacity-0'); 
+                 modalCloseTimer = setTimeout(() => { m.classList.add('hidden'); b.classList.add('hidden'); document.getElementById('import-json-area').value = ''; }, 200); 
+             } else { 
+                 setTimeout(() => { m.classList.add('hidden'); document.getElementById('import-json-area').value = ''; }, 200); 
+             }
+        }
+        function autoSaveTask() {
+            const id = document.getElementById('edit-task-id').value;
+            const title = document.getElementById('input-title').value;
+            
+            // 新建任务时，如果有标题则自动创建
+            if(!id) {
+                if(!title) return; // 没有标题不创建
+                saveSnapshot('自动保存新建任务');
+                // 保存工时配置
+                const { weeklyDefaults, dailyPlans } = saveWorkTimeConfig();
+                const newTask = {
+                    id: generateId('t'),
+                    title: title,
+                    project: document.getElementById('input-project').value,
+                    desc: document.getElementById('input-desc').value,
+                    start: document.getElementById('input-start-date').value,
+                    startTime: document.getElementById('input-start-time').value || '09:30',
+                    end: document.getElementById('input-end-date').value,
+                    endTime: document.getElementById('input-end-time').value || '20:00',
+                    status: (document.querySelector('input[name="status"]:checked') || {}).value || 'todo',
+                    weeklyDefaults,
+                    dailyPlans
+                };
+                tasks.unshift(newTask);
+                document.getElementById('edit-task-id').value = newTask.id; // 设置为编辑模式
+                saveTasks();
+                renderAllViews();
+                return;
+            }
+            
+            // 编辑已有任务
+            const t = tasks.find(x => x.id == id);
+            if(t) {
+                saveSnapshot('自动保存任务');
+                t.title = title;
+                t.project = document.getElementById('input-project').value;
+                t.desc = document.getElementById('input-desc').value;
+                t.start = document.getElementById('input-start-date').value;
+                t.startTime = document.getElementById('input-start-time').value || '09:30';
+                t.end = document.getElementById('input-end-date').value;
+                t.endTime = document.getElementById('input-end-time').value || '20:00';
+                const statusEl = document.querySelector('input[name="status"]:checked');
+                t.status = statusEl ? statusEl.value : 'todo';
+                // 保存工时配置
+                const { weeklyDefaults, dailyPlans } = saveWorkTimeConfig();
+                t.weeklyDefaults = weeklyDefaults;
+                t.dailyPlans = dailyPlans;
+                saveTasks();
+                renderAllViews();
+            }
+        }
+        
+        // 验证日期时间的合法性
+        function validateDateTime() {
+            const startDate = document.getElementById('input-start-date').value;
+            const startTime = document.getElementById('input-start-time').value;
+            const endDate = document.getElementById('input-end-date').value;
+            const endTime = document.getElementById('input-end-time').value;
+            
+            if (!startDate || !endDate || !startTime || !endTime) return;
+            
+            const start = new Date(startDate + 'T' + startTime);
+            const end = new Date(endDate + 'T' + endTime);
+            
+            // 如果结束时间早于开始时间，自动修正
+            if (end < start) {
+                // 如果是同一天，将结束时间设为开始时间+1小时，并取整到最近的30分钟
+                if (endDate === startDate) {
+                    const newEndTime = new Date(start.getTime() + 60 * 60 * 1000);
+                    let hours = newEndTime.getHours();
+                    let mins = newEndTime.getMinutes();
+                    // 取整到30分钟
+                    mins = mins < 15 ? 0 : (mins < 45 ? 30 : 0);
+                    if (mins === 0 && newEndTime.getMinutes() >= 45) hours++;
+                    if (hours > 23) hours = 23;
+                    document.getElementById('input-end-time').value = 
+                        String(hours).padStart(2, '0') + ':' + String(mins).padStart(2, '0');
+                } else {
+                    // 如果是跨天但时间不对，将结束日期设为开始日期
+                    document.getElementById('input-end-date').value = startDate;
+                }
+            }
+        }
+        function saveTask() {
+            const id = document.getElementById('edit-task-id').value, 
+                  title = document.getElementById('input-title').value; 
+            if(!title) return;
+            
+            // 保存工时配置
+            const { weeklyDefaults, dailyPlans } = saveWorkTimeConfig();
+            
+            const data = { 
+                title, 
+                project: document.getElementById('input-project').value, 
+                desc: document.getElementById('input-desc').value, 
+                start: document.getElementById('input-start-date').value, 
+                startTime: document.getElementById('input-start-time').value || '09:30',
+                end: document.getElementById('input-end-date').value, 
+                endTime: document.getElementById('input-end-time').value || '20:00',
+                status: (document.querySelector('input[name="status"]:checked') || {value: 'todo'}).value,
+                weeklyDefaults,
+                dailyPlans
+                // 颜色不再存储在任务中，动态从项目获取
+            };
+            if(id) { 
+                saveSnapshot('编辑任务');
+                const t = tasks.find(t => t.id == id);
+                // 保留原有颜色字段（向后兼容），但新逻辑不依赖它
+                Object.assign(t, data); 
+            } else { 
+                saveSnapshot('新建任务');
+                tasks.unshift({ id: generateId('t'), ...data }); 
+            }
+            saveTasks(); closeModal(); renderAllViews();
+        }
+        function deleteCurrentTask() { 
+            const id = document.getElementById('edit-task-id').value; 
+            setTimeout(() => { 
+                if(id && confirm("删除此任务？")) { 
+                    saveSnapshot('删除任务');
+                    tasks = tasks.filter(t => t.id != id); 
+                    saveTasks(); closeModal(); renderAllViews(); 
+                } 
+            }, 10); 
+        }
+        function toggleTaskStatus(id) { 
+            // 切换状态不需要撤销（可以再次点击还原）
+            const t = tasks.find(x => x.id == id); 
+            if(t) { 
+                t.status = t.status === 'done' ? 'todo' : 'done'; 
+                saveTasks(); 
+                renderAllViews(); 
+            } 
+        }
+        
+        function cleanupEmptyProjects() {
+            // 找出所有有任务的项目（父项目和子项目）
+            const usedProjects = new Set();
+            tasks.forEach(t => {
+                if (t.project) {
+                    const parts = t.project.split(' > ');
+                    usedProjects.add(parts[0]); // 父项目
+                    if (parts.length > 1) {
+                        usedProjects.add(t.project); // 完整路径
+                    }
+                }
+            });
+            
+            const originalLength = projectList.length;
+            // 过滤项目列表：只保留有任务的项目，或有子项目的项目
+            projectList = projectList.filter(p => {
+                // 如果有子项目且子项目中有被使用的，保留
+                const hasUsedChildren = p.children && p.children.some(c => usedProjects.has(p.name + ' > ' + c.name));
+                // 如果父项目被使用，保留
+                const isParentUsed = usedProjects.has(p.name);
+                return isParentUsed || hasUsedChildren || (p.children && p.children.length > 0);
+            });
+            
+            if (projectList.length < originalLength) {
+                saveTasks();
+                renderAllViews();
+                showToast(`已清理 ${originalLength - projectList.length} 个空项目`);
+            } else {
+                showToast('没有空项目需要清理');
+            }
+        }
+
+        function getProjectHierarchy(pName) {
+            for (let p of projectList) {
+                if (p.name === pName) return { parent: p.name, child: null, hex: p.hex };
+                if (p.children) { const c = p.children.find(child => child.name === pName); if (c) return { parent: p.name, child: c.name, hex: p.hex }; }
+            }
+            return { parent: '其他', child: pName, hex: '#9ca3af' };
+        }
+
+        function triggerDirectExport() {
+            let s = document.getElementById('stats-start-date').value, e = document.getElementById('stats-end-date').value;
+            if(!s || !e) { const t = new Date(); s = fmtDate(new Date(t.getFullYear(), t.getMonth(), 1)); e = fmtDate(new Date(t.getFullYear(), t.getMonth() + 1, 0)); }
+            const rel = getFilteredTasks().filter(t => t.start <= e && t.end >= s);
+            const grps = {};
+            rel.forEach(t => { 
+                const parentName = getParentNameFromPath(t.project);
+                const childName = getDisplayNameFromPath(t.project);
+                const key = parentName;
+                if(!grps[key]) grps[key] = {d:0, ts:[]}; 
+                const d = dateDiffDays(t.start, t.end) + 1; 
+                grps[key].d += d; 
+                grps[key].ts.push({...t, days:d, fullPath: childName !== parentName ? `${parentName} > ${childName}` : parentName}); 
+            });
+            let md = `📅 **Nexus 报告** (${s} 至 ${e})\n\n### 概览\n| 项目组 | 任务 | 总人天 |\n| :--- | :--- | :--- |\n`;
+            Object.keys(grps).forEach(p => md += `| ${p} | ${grps[p].ts.length} | ${grps[p].d} |\n`); 
+            md += `\n---\n### 详情\n`;
+            Object.keys(grps).forEach(p => { 
+                md += `\n**${p}**\n| 任务 | 项目路径 | 状态 | 时长 |\n| :--- | :--- | :--- | :--- |\n`; 
+                grps[p].ts.forEach(t => md += `| ${t.title} | ${t.fullPath} | ${t.status==='done'?'✅':'⭕'} | ${t.days}天 |\n`); 
+            });
+            const b = new Blob([md], {type:'text/markdown'}), u = URL.createObjectURL(b), a = document.createElement('a'); a.href = u; a.download = `Report_${s}_${e}.md`; document.body.appendChild(a); a.click(); setTimeout(() => { a.remove(); URL.revokeObjectURL(u); }, 100);
+        }
+
+        function copyAIPrompt() {
+            const today = fmtDate(new Date()); 
+            let projects = [];
+            projectList.forEach(p => { 
+                if(p.children && p.children.length > 0) {
+                    p.children.forEach(c => projects.push(`${p.name} > ${c.name}`));
+                } else {
+                    projects.push(p.name); 
+                } 
+            });
+            const prompt = `我正在使用 Nexus 任务管理软件。我需要你作为一个专业的项目经理，帮助我将一段非结构化的项目描述拆解为具体的任务。当前日期: ${today}。现有的项目分类: [${projects.join(', ')}]。请遵循以下规则: 1. 分析我的描述，将其拆解为多个具体的可执行任务。2. 为每个任务分配最合适的现有项目分类（必须严格匹配上述列表中的名称，如果只能匹配父类，请使用父类名称）。3. 估算合理的开始时间和结束时间（格式 YYYY-MM-DD）。4. 同时估算精确时间，开始时间默认为09:30，结束时间默认为20:00（格式 HH:MM）。5. 状态只能是: "todo" (待办), "inprogress" (进行中), "done" (已完成)。6. 直接输出 JSON 格式代码，不要包含任何 Markdown 格式，只返回纯文本 JSON 数组。结构: [{"title":"任务名称","desc":"描述","start":"YYYY-MM-DD","startTime":"HH:MM","end":"YYYY-MM-DD","endTime":"HH:MM","project":"项目名","status":"todo"}]。`;
+            navigator.clipboard.writeText(prompt).then(() => showToast("Prompt 已复制，请粘贴给 AI"));
+        }
+        function processImport() {
+            const raw = document.getElementById('import-json-area').value;
+            try {
+                const arr = JSON.parse(raw); if (!Array.isArray(arr)) throw new Error("输入必须是 JSON 数组");
+                let count = 0; 
+                const importTasks = [];
+                arr.forEach(item => { 
+                    if (item.title && item.start && item.end) { 
+                        let pName = item.project; 
+                        importTasks.push({ 
+                            id: generateId('t'), 
+                            title: item.title, 
+                            desc: item.desc || '', 
+                            start: item.start, 
+                            startTime: item.startTime || '09:30',
+                            end: item.end, 
+                            endTime: item.endTime || '20:00',
+                            project: pName || '待办中心', 
+                            status: ['todo', 'inprogress', 'done'].includes(item.status) ? item.status : 'todo',
+                            weeklyDefaults: {mon: 8, tue: 8, wed: 8, thu: 8, fri: 8, sat: 8, sun: 8},
+                            dailyPlans: {}
+                            // 颜色从项目动态获取，不存储在任务中
+                        }); 
+                        count++; 
+                    } 
+                });
+                if(count > 0) { 
+                    saveSnapshot('导入任务');
+                    tasks.unshift(...importTasks);
+                    saveTasks(); renderAllViews(); closeImportModal(); showToast(`成功导入 ${count}  个任务`); 
+                } 
+                else { alert("未找到有效的任务数据"); }
+            } catch (e) { alert("JSON 解析失败: " + e.message); }
+        }
+        function showToast(msg) { const t = document.getElementById('toast'); document.getElementById('toast-msg').innerText = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3000); }
+
+        // 初始化：清理一次空项目，然后渲染
+        (function initApp() {
+            try {
+                // 清理空项目（只保留有任务的项目和默认项目）
+                const usedParentNames = new Set();
+                tasks.forEach(t => {
+                    if (t.project) {
+                        usedParentNames.add(getParentNameFromPath(t.project));
+                    }
+                });
+                const originalLength = projectList.length;
+                projectList = projectList.filter(p => {
+                    // 保留默认项目（设计系统、待办中心等）
+                    if (['设计系统', '待办中心', '开发中心'].includes(p.name)) return true;
+                    // 保留有任务的项目
+                    if (usedParentNames.has(p.name)) return true;
+                    // 保留有子项目的项目
+                    if (p.children && p.children.length > 0) return true;
+                    // 删除其他空项目（如重复的"新项目"）
+                    return false;
+                });
+                if (projectList.length !== originalLength) {
+                    saveTasks();
+                    console.log(`已清理 ${originalLength - projectList.length} 个空项目`);
+                }
+                
+                initUser(); 
+                setStatsPeriod('week'); 
+                renderAllViews();
+                console.log('应用初始化完成');
+            } catch (e) {
+                console.error('初始化失败:', e);
+            }
+        })();
+    </script>
+</body>
+</html>
