@@ -862,7 +862,12 @@
                     tasks = [];
                 }
             }
-            if (storedProjects) projectList = JSON.parse(storedProjects);
+            if (storedProjects) {
+                projectList = JSON.parse(storedProjects);
+                console.log('Loaded', projectList.length, 'projects:', projectList.map(p => p.name).join(', '));
+            } else {
+                console.log('No stored projects, using default');
+            }
             if (storedUser) userName = storedUser;
         } catch (e) {
             console.error('Failed to load data from storage:', e);
@@ -1806,7 +1811,7 @@
             
             console.log('renderStats: 日期范围', sVal, '至', eVal);
             
-            // 自动清理空项目
+            // 自动清理空项目（仅清理名为"新项目"且没有子项目的）
             const usedParentNames = new Set();
             tasks.forEach(t => {
                 if (t.project) usedParentNames.add(getParentNameFromPath(t.project));
@@ -1814,13 +1819,24 @@
             const originalLength = projectList.length;
             let hasChanges = false;
             projectList = projectList.filter(p => {
+                // 保留有任务的项目
                 if (usedParentNames.has(p.name)) return true;
+                // 保留有子项目的项目
                 if (p.children && p.children.length > 0) return true;
-                if (p.name !== '新项目') return true;
-                hasChanges = true;
-                return false;
+                // 保留默认项目
+                if (['设计系统', '待办中心', '开发中心'].includes(p.name)) return true;
+                // 删除名为"新项目"且没有任务和子项目的
+                if (p.name === '新项目') {
+                    hasChanges = true;
+                    return false;
+                }
+                // 保留其他所有项目（用户自定义的）
+                return true;
             });
-            if (hasChanges && projectList.length !== originalLength) saveTasks();
+            if (hasChanges && projectList.length !== originalLength) {
+                console.log('自动清理空项目: 从', originalLength, '个变为', projectList.length, '个');
+                saveTasks();
+            }
 
             // 筛选在时间段内有重叠的任务
             const visibleTasks = getFilteredTasks().filter(t => isTaskInPeriod(t, sVal, eVal));
@@ -2569,14 +2585,16 @@
         }
         
         function updateProjectName(pId, cId, val) { 
+            console.log('updateProjectName:', { pId, cId, val });
             const p = projectList.find(x => x.id === pId); 
-            if(!p) return; 
+            if(!p) { console.log('  父项目未找到'); return; }
             const t = cId ? p.children.find(x => x.id === cId) : p; 
-            if (!t || t.name === val) return;
+            if (!t || t.name === val) { console.log('  无需修改'); return; }
             saveSnapshot(cId ? '修改子项目名称' : '修改父项目名称');
             const oldName = t.name; 
             const newName = val;
             t.name = newName; 
+            console.log(`  修改名称: "${oldName}" -> "${newName}"`);
             
             tasks.forEach(task => {
                 if (cId) {
@@ -2584,16 +2602,20 @@
                     const newPath = getProjectPath(p.name, newName);
                     if(task.project === oldPath) {
                         task.project = newPath;
+                        console.log(`  更新任务项目路径: ${oldPath} -> ${newPath}`);
                     }
                 } else {
                     if (task.project === oldName) {
                         task.project = newName;
+                        console.log(`  更新任务项目: ${oldName} -> ${newName}`);
                     } else if (task.project.startsWith(oldName + ' > ')) {
                         task.project = task.project.replace(oldName + ' > ', newName + ' > ');
+                        console.log(`  更新任务子项目路径: ${oldName} -> ${newName}`);
                     }
                 }
             }); 
-            saveTasks(); 
+            saveTasks();
+            console.log('  已保存, 当前项目列表:', projectList.map(p => p.name).join(', '));
         }
         
         function updateProjectColor(pId, val) {
