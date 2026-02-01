@@ -389,15 +389,36 @@
                         <h4 class="text-sm font-medium text-gray-900">每日工时配置</h4>
                         <button onclick="saveStatsSettings()" class="text-xs bg-gray-900 text-white px-3 py-1.5 rounded-md hover:bg-gray-800 transition-colors">保存</button>
                     </div>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                         <div>
                             <label class="block text-xs text-gray-500 mb-1.5">每日标准工作时长（小时）</label>
-                            <input type="number" id="setting-standard-hours" value="8" min="1" max="24" class="w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-lg p-2 outline-none focus:border-gray-900">
+                            <input type="number" id="setting-standard-hours" value="8" min="0" max="24" step="0.5"
+                                   class="w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-lg p-2 outline-none focus:border-gray-900">
                         </div>
                         <div>
-                            <label class="block text-xs text-gray-500 mb-1.5">每日加班时长（小时）</label>
-                            <input type="number" id="setting-overtime-hours" value="2" min="0" max="24" class="w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-lg p-2 outline-none focus:border-gray-900">
+                            <label class="block text-xs text-gray-500 mb-1.5">每日额外工作时长（小时）</label>
+                            <input type="number" id="setting-overtime-hours" value="2" min="0" max="24" step="0.5"
+                                   class="w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-lg p-2 outline-none focus:border-gray-900">
                         </div>
+                    </div>
+                    
+                    <!-- 休息时段 -->
+                    <div class="border-t border-gray-100 pt-3 mb-3">
+                        <div class="flex items-center justify-between mb-2">
+                            <label class="block text-xs text-gray-500">休息时间（从标准工时扣除）</label>
+                        </div>
+                        <div id="break-times-list" class="space-y-2">
+                            <!-- 动态生成的休息时段列表 -->
+                        </div>
+                        <button type="button" onclick="addBreakTime()" 
+                                class="mt-2 text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1">
+                            <i data-lucide="plus" class="w-3 h-3"></i> 添加休息时段
+                        </button>
+                    </div>
+                    
+                    <div class="text-[10px] text-gray-400 bg-gray-50 p-2 rounded">
+                        说明：饼图外圈 = 标准工时（已扣除休息），内圈 = 额外工时
                     </div>
                 </div>
                 
@@ -587,11 +608,79 @@
                         <label class="flex items-center space-x-2 cursor-pointer p-1"><input type="radio" onchange="autoSaveTask()" name="status" value="done" class="text-gray-900 focus:ring-gray-900 w-4 h-4"><span class="text-sm text-gray-700">已完成</span></label>
                     </div>
                 </div>
+                
+                <!-- 工时配置区域（可折叠） -->
+                <div class="mt-6 border-t border-gray-100 pt-4">
+                    <div class="flex items-center justify-between cursor-pointer" onclick="toggleWorkTimeConfig()">
+                        <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide">工时配置</label>
+                        <button type="button" id="worktime-toggle-btn" class="text-xs text-gray-400 hover:text-gray-600">
+                            <span id="worktime-toggle-text">展开</span>
+                            <i data-lucide="chevron-down" id="worktime-toggle-icon" class="w-4 h-4 inline-block ml-1"></i>
+                        </button>
+                    </div>
+                    
+                    <div id="worktime-config-content" class="hidden mt-3">
+                        <!-- 默认时间 -->
+                        <div class="flex items-center gap-2 mb-3">
+                            <span class="text-sm text-gray-600">默认时间</span>
+                            <input type="number" id="input-default-hours" value="8" min="0" max="24" 
+                                   class="w-16 bg-gray-50 border border-gray-200 rounded px-2 py-1 text-sm text-center"
+                                   oninput="validateHoursInput(this)" onchange="autoSaveTask()">
+                            <span class="text-sm text-gray-600">小时</span>
+                            <button type="button" onclick="applyDefaultToAllDays()" 
+                                    class="ml-auto text-xs text-blue-600 hover:text-blue-800">应用到全部星期</button>
+                        </div>
+                        
+                        <!-- 周一~周日 -->
+                        <div class="grid grid-cols-7 gap-1 mb-4">
+                            <div class="text-center">
+                                <label class="block text-[10px] text-gray-500 mb-1">周一</label>
+                                <input type="number" data-day="mon" class="day-input w-full bg-gray-50 border border-gray-200 rounded px-1 py-1 text-sm text-center" value="8" min="0" max="24" oninput="validateHoursInput(this)" onchange="autoSaveTask()">
+                            </div>
+                            <div class="text-center">
+                                <label class="block text-[10px] text-gray-500 mb-1">周二</label>
+                                <input type="number" data-day="tue" class="day-input w-full bg-gray-50 border border-gray-200 rounded px-1 py-1 text-sm text-center" value="8" min="0" max="24" oninput="validateHoursInput(this)" onchange="autoSaveTask()">
+                            </div>
+                            <div class="text-center">
+                                <label class="block text-[10px] text-gray-500 mb-1">周三</label>
+                                <input type="number" data-day="wed" class="day-input w-full bg-gray-50 border border-gray-200 rounded px-1 py-1 text-sm text-center" value="8" min="0" max="24" oninput="validateHoursInput(this)" onchange="autoSaveTask()">
+                            </div>
+                            <div class="text-center">
+                                <label class="block text-[10px] text-gray-500 mb-1">周四</label>
+                                <input type="number" data-day="thu" class="day-input w-full bg-gray-50 border border-gray-200 rounded px-1 py-1 text-sm text-center" value="8" min="0" max="24" oninput="validateHoursInput(this)" onchange="autoSaveTask()">
+                            </div>
+                            <div class="text-center">
+                                <label class="block text-[10px] text-gray-500 mb-1">周五</label>
+                                <input type="number" data-day="fri" class="day-input w-full bg-gray-50 border border-gray-200 rounded px-1 py-1 text-sm text-center" value="8" min="0" max="24" oninput="validateHoursInput(this)" onchange="autoSaveTask()">
+                            </div>
+                            <div class="text-center">
+                                <label class="block text-[10px] text-gray-500 mb-1">周六</label>
+                                <input type="number" data-day="sat" class="day-input w-full bg-gray-50 border border-gray-200 rounded px-1 py-1 text-sm text-center" value="8" min="0" max="24" oninput="validateHoursInput(this)" onchange="autoSaveTask()">
+                            </div>
+                            <div class="text-center">
+                                <label class="block text-[10px] text-gray-500 mb-1">周日</label>
+                                <input type="number" data-day="sun" class="day-input w-full bg-gray-50 border border-gray-200 rounded px-1 py-1 text-sm text-center" value="8" min="0" max="24" oninput="validateHoursInput(this)" onchange="autoSaveTask()">
+                            </div>
+                        </div>
+                        
+                        <!-- 特殊日期 -->
+                        <div class="border-t border-gray-100 pt-3">
+                            <label class="block text-xs text-gray-500 mb-2">特殊日期计划（覆盖当天基准）</label>
+                            <div id="special-dates-list" class="space-y-2 mb-2">
+                                <!-- 动态生成的特殊日期列表 -->
+                            </div>
+                            <button type="button" onclick="addSpecialDate()" 
+                                    class="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1">
+                                <i data-lucide="plus" class="w-3 h-3"></i> 添加特殊日期
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
         <div class="px-6 py-4 border-t border-gray-100 bg-gray-50/50 flex items-center justify-between shrink-0 mb-safe pb-safe">
             <button type="button" id="btn-delete-task" onclick="deleteCurrentTask()" class="text-sm font-medium text-red-500 hover:text-red-700 px-3 py-2 hidden active:bg-red-50 rounded transition-colors select-none">删除任务</button>
-            <button onclick="closeModal()" class="bg-gray-900 hover:bg-gray-800 text-white text-xs font-medium px-6 py-2 rounded-md shadow-sm transition-transform active:scale-95 ml-auto">保存任务</button>
+            <button onclick="saveTask()" class="bg-gray-900 hover:bg-gray-800 text-white text-xs font-medium px-6 py-2 rounded-md shadow-sm transition-transform active:scale-95 ml-auto">保存任务</button>
         </div>
     </div>
 
@@ -766,6 +855,7 @@
             const storedUser = localStorage.getItem('nexus_username');
             if (storedTasks) {
                 tasks = JSON.parse(storedTasks);
+                console.log('Loaded', tasks.length, 'tasks');
                 // 如果加载的任务是默认示例任务（通过id判断），清空它们
                 if (tasks.some(t => t.id && t.id.startsWith('t_default_'))) {
                     console.log('检测到旧版示例任务，清空任务列表');
@@ -818,8 +908,19 @@
 
         projectList.forEach(p => { if(p.name === '收件箱') p.name = '待办中心'; });
         tasks.forEach(t => { if(t.project === '收件箱') t.project = '待办中心'; });
+        
+        // 数据兼容性：为旧任务添加默认字段
+        tasks.forEach(t => {
+            if (!t.weeklyDefaults) {
+                t.weeklyDefaults = {mon: 8, tue: 8, wed: 8, thu: 8, fri: 8, sat: 8, sun: 8};
+            }
+            if (!t.dailyPlans) {
+                t.dailyPlans = {};
+            }
+        });
 
         function saveTasks() {
+            console.log('Saving task...', tasks.length, 'tasks');
             localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
             localStorage.setItem('nexus_projects', JSON.stringify(projectList));
             localStorage.setItem('nexus_username', userName);
@@ -1351,7 +1452,15 @@
         function setStatsPeriod(p) {
             statsPeriod = p; const s = document.getElementById('stats-start-date'), e = document.getElementById('stats-end-date'), t = new Date();
             if(p === 'today') { s.value = e.value = fmtDate(t); } 
-            else if (p === 'week') { const d = new Date(t); d.setDate(t.getDate() - 6); s.value = fmtDate(d); e.value = fmtDate(t); } 
+            else if (p === 'week') { 
+                // 本周：周一到周日
+                const dayOfWeek = t.getDay(); // 0=周日, 1=周一, ..., 6=周六
+                const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // 本周一的偏移量
+                const monday = new Date(t); monday.setDate(t.getDate() + mondayOffset);
+                const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);
+                s.value = fmtDate(monday); 
+                e.value = fmtDate(sunday); 
+            } 
             else if (p === 'month') { s.value = fmtDate(new Date(t.getFullYear(), t.getMonth(), 1)); e.value = fmtDate(new Date(t.getFullYear(), t.getMonth() + 1, 0)); }
             ['today', 'week', 'month'].forEach(k => { 
                 const b = document.getElementById(`stats-btn-${k}`); 
@@ -1381,30 +1490,156 @@
         // 工时设置存储
         const SETTINGS_KEY = 'nexus_settings';
         // 每日工时设置（默认：每天8小时标准，2小时加班）
-        let workSettings = { standardHours: 8, overtimeHours: 2 };
+        let workSettings = { 
+            standardHours: 8, 
+            overtimeHours: 2,
+            breakTimes: [
+                { name: '午餐', hours: 1.5, enabled: true },
+                { name: '晚餐', hours: 1, enabled: false }
+            ]
+        };
         try {
             const stored = localStorage.getItem(SETTINGS_KEY);
-            if (stored) workSettings = JSON.parse(stored);
-        } catch (e) {}
+            if (stored) {
+                const parsed = JSON.parse(stored);
+                console.log('从localStorage加载设置:', parsed);
+                workSettings = { ...workSettings, ...parsed };
+                // 兼容旧数据：如果没有breakTimes初始化为默认值
+                if (!workSettings.breakTimes) {
+                    workSettings.breakTimes = [
+                        { name: '午餐', hours: 1.5, enabled: true },
+                        { name: '晚餐', hours: 1, enabled: false }
+                    ];
+                }
+                // 兼容旧数据：将旧的start/end格式转换为hours格式
+                workSettings.breakTimes.forEach(bt => {
+                    if (bt.start !== undefined && bt.end !== undefined && bt.hours === undefined) {
+                        const start = new Date('2000-01-01T' + bt.start);
+                        const end = new Date('2000-01-01T' + bt.end);
+                        let hours = (end - start) / (1000 * 60 * 60);
+                        if (hours < 0) hours += 24;
+                        bt.hours = Math.max(0, hours);
+                        delete bt.start;
+                        delete bt.end;
+                        console.log(`迁移旧数据: ${bt.name} = ${bt.hours}h`);
+                    }
+                });
+                console.log('合并后的workSettings:', workSettings);
+            }
+        } catch (e) { console.error('加载设置失败:', e); }
         
         function saveWorkSettings() {
             localStorage.setItem(SETTINGS_KEY, JSON.stringify(workSettings));
+        }
+        
+        // 切换工时配置展开/收起
+        function toggleWorkTimeConfig() {
+            const content = document.getElementById('worktime-config-content');
+            const text = document.getElementById('worktime-toggle-text');
+            const icon = document.getElementById('worktime-toggle-icon');
+            
+            if (content.classList.contains('hidden')) {
+                content.classList.remove('hidden');
+                text.textContent = '收起';
+                icon.setAttribute('data-lucide', 'chevron-up');
+            } else {
+                content.classList.add('hidden');
+                text.textContent = '展开';
+                icon.setAttribute('data-lucide', 'chevron-down');
+            }
+            if (window.lucide) lucide.createIcons();
+        }
+        
+        // ==================== 每日休息时段配置 ====================
+        
+        // 计算每日休息总时长
+        function getDailyBreakHours() {
+            let totalBreak = 0;
+            (workSettings.breakTimes || []).forEach((bt, idx) => {
+                if (bt.enabled && bt.hours > 0) {
+                    totalBreak += bt.hours;
+                    console.log(`  休息${idx}: ${bt.name} = ${bt.hours}h`);
+                }
+            });
+            console.log('getDailyBreakHours: 总休息时长 =', totalBreak);
+            return totalBreak;
+        }
+        
+        // 渲染休息时段列表
+        function renderBreakTimesList() {
+            const list = document.getElementById('break-times-list');
+            if (!list) return;
+            list.innerHTML = '';
+            
+            workSettings.breakTimes.forEach((bt, index) => {
+                const row = document.createElement('div');
+                row.className = 'flex items-center gap-2 text-sm';
+                row.innerHTML = `
+                    <input type="checkbox" ${bt.enabled ? 'checked' : ''} onchange="toggleBreakTime(${index}, this.checked)" class="rounded">
+                    <input type="text" value="${bt.name}" onchange="updateBreakTime(${index}, 'name', this.value);" 
+                           class="w-20 bg-gray-50 border border-gray-200 rounded px-2 py-1 text-xs">
+                    <input type="number" value="${bt.hours}" min="0" max="24" step="0.5"
+                           onchange="updateBreakTime(${index}, 'hours', parseFloat(this.value) || 0);"
+                           class="w-20 bg-gray-50 border border-gray-200 rounded px-2 py-1 text-xs text-center">
+                    <span class="text-sm text-gray-500">小时</span>
+                    <button onclick="removeBreakTime(${index}); saveWorkSettings();" class="text-gray-400 hover:text-red-500 p-1">
+                        <i data-lucide="x" class="w-3 h-3"></i>
+                    </button>
+                `;
+                list.appendChild(row);
+            });
+            if (window.lucide) lucide.createIcons();
+        }
+        
+        // 休息时段操作函数
+        function addBreakTime() {
+            workSettings.breakTimes.push({ name: '新休息', hours: 1, enabled: true });
+            saveWorkSettings();
+            renderBreakTimesList();
+        }
+        
+        function removeBreakTime(index) {
+            workSettings.breakTimes.splice(index, 1);
+            saveWorkSettings();
+            renderBreakTimesList();
+        }
+        
+        function toggleBreakTime(index, enabled) {
+            workSettings.breakTimes[index].enabled = enabled;
+            saveWorkSettings();
+        }
+        
+        function updateBreakTime(index, field, value) {
+            workSettings.breakTimes[index][field] = value;
+            saveWorkSettings();
         }
         
         function toggleStatsSettings() {
             const panel = document.getElementById('stats-settings-panel');
             panel.classList.toggle('hidden');
             if (!panel.classList.contains('hidden')) {
-                document.getElementById('setting-standard-hours').value = workSettings.standardHours;
-                document.getElementById('setting-overtime-hours').value = workSettings.overtimeHours;
+                console.log('toggleStatsSettings 加载值:', workSettings);
+                // 正确处理 0 值显示
+                const stdVal = workSettings.standardHours;
+                const otVal = workSettings.overtimeHours;
+                console.log('设置输入框值:', { stdVal, otVal });
+                document.getElementById('setting-standard-hours').value = stdVal !== undefined ? stdVal : 8;
+                document.getElementById('setting-overtime-hours').value = otVal !== undefined ? otVal : 2;
+                renderBreakTimesList();
             }
         }
         
         function saveStatsSettings() {
-            const std = parseFloat(document.getElementById('setting-standard-hours').value) || 8;
-            const ot = parseFloat(document.getElementById('setting-overtime-hours').value) || 2;
-            workSettings.standardHours = Math.max(0.5, Math.min(24, std));
-            workSettings.overtimeHours = Math.max(0, Math.min(24, ot));
+            const stdInput = document.getElementById('setting-standard-hours').value;
+            const otInput = document.getElementById('setting-overtime-hours').value;
+            const std = parseFloat(stdInput);
+            const ot = parseFloat(otInput);
+            console.log('saveStatsSettings 输入值:', { stdInput, otInput, std, ot });
+            // 使用 isNaN 检查，允许设置为 0
+            workSettings.standardHours = isNaN(std) ? 8 : Math.max(0, Math.min(24, std));
+            workSettings.overtimeHours = isNaN(ot) ? 2 : Math.max(0, Math.min(24, ot));
+            console.log('saveStatsSettings 保存后:', workSettings);
+            // breakTimes 在修改时已实时保存，这里再次确保保存
             saveWorkSettings();
             document.getElementById('stats-settings-panel').classList.add('hidden');
             renderStats();
@@ -1416,6 +1651,62 @@
             const icon = document.getElementById('life-overview-icon');
             content.classList.toggle('hidden');
             icon.style.transform = content.classList.contains('hidden') ? '' : 'rotate(180deg)';
+        }
+        
+        // ==================== 新统计逻辑：基于日期范围的工时计算 ====================
+        
+        // 获取任务在某一天的工时（扣除休息时间）
+        function getTaskHoursOnDate(task, dateStr) {
+            if (!task) return 8;
+            // 1. 检查特殊日期
+            let plannedHours = 8;
+            if (task.dailyPlans && task.dailyPlans[dateStr] !== undefined) {
+                plannedHours = task.dailyPlans[dateStr];
+            } else {
+                // 2. 使用周一~周日基准
+                const date = new Date(dateStr);
+                const dayMap = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+                const dayKey = dayMap[date.getDay()];
+                // 确保 weeklyDefaults 存在且包含所有天数
+                const defaults = task.weeklyDefaults || {mon: 8, tue: 8, wed: 8, thu: 8, fri: 8, sat: 8, sun: 8};
+                const val = defaults[dayKey];
+                plannedHours = val !== undefined ? val : 8;
+            }
+            
+            // 3. 扣除每日休息时间
+            const breakHours = getDailyBreakHours();
+            const actualHours = Math.max(0, plannedHours - breakHours);
+            
+            console.log(`getTaskHoursOnDate: ${dateStr}, 计划${plannedHours}h, 休息${breakHours}h, 实际${actualHours}h`);
+            return actualHours;
+        }
+
+        // 获取任务在日期范围内的总工时
+        function getTaskHoursInPeriod(task, startDate, endDate) {
+            if (!task || !startDate || !endDate) return 0;
+            let total = 0;
+            
+            // 计算重叠的日期范围
+            const taskStart = new Date(task.start);
+            const taskEnd = new Date(task.end);
+            const periodStart = new Date(startDate);
+            const periodEnd = new Date(endDate);
+            
+            // 取交集：任务时间和统计时间的重叠部分
+            const overlapStart = new Date(Math.max(taskStart.getTime(), periodStart.getTime()));
+            const overlapEnd = new Date(Math.min(taskEnd.getTime(), periodEnd.getTime()));
+            
+            // 如果没有重叠，返回0
+            if (overlapStart > overlapEnd) return 0;
+            
+            // 只遍历重叠的日期
+            let loopCount = 0;
+            const maxDays = 365;
+            for (let d = new Date(overlapStart); d <= overlapEnd && loopCount < maxDays; d.setDate(d.getDate() + 1), loopCount++) {
+                const dateStr = fmtDate(d);
+                total += getTaskHoursOnDate(task, dateStr);
+            }
+            return total;
         }
         
         // 计算任务的完整计划时长（小时）
@@ -1478,6 +1769,30 @@
             }
         }
         
+        // 计算日期范围内的休息总时长
+        function calculateBreakHoursInPeriod(startDate, endDate) {
+            let totalBreak = 0;
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+            const breakHoursPerDay = getDailyBreakHours();
+            
+            if (breakHoursPerDay <= 0) return 0;
+            
+            const maxDays = 365;
+            let dayCount = 0;
+            for (let d = new Date(start); d <= end && dayCount < maxDays; d.setDate(d.getDate() + 1), dayCount++) {
+                totalBreak += breakHoursPerDay;
+            }
+            console.log(`calculateBreakHoursInPeriod: ${startDate} 至 ${endDate}, 共${dayCount}天, 每日休息${breakHoursPerDay}h, 总休息${totalBreak.toFixed(1)}h`);
+            return totalBreak;
+        }
+        
+        // 计算日期范围内的额外工时
+        function calculateOvertimeInPeriod(startDate, endDate) {
+            const days = Math.ceil((new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24)) + 1;
+            return workSettings.overtimeHours * days;
+        }
+        
         function renderStats() {
             const list = document.getElementById('stats-project-list'),
                   pieArcs = document.getElementById('pie-arcs'),
@@ -1488,6 +1803,8 @@
             list.innerHTML = '';
             pieArcs.innerHTML = '';
             if(!sVal || !eVal) return;
+            
+            console.log('renderStats: 日期范围', sVal, '至', eVal);
             
             // 自动清理空项目
             const usedParentNames = new Set();
@@ -1508,12 +1825,15 @@
             // 筛选在时间段内有重叠的任务
             const visibleTasks = getFilteredTasks().filter(t => isTaskInPeriod(t, sVal, eVal));
 
-            // 统计每个任务的完整计划小时数
+            // 统计每个任务在日期范围内的工时（新逻辑）
             const taskStats = visibleTasks.map(t => {
-                const hours = getTaskTotalHours(t);
+                const hours = getTaskHoursInPeriod(t, sVal, eVal);
                 const parentName = getParentNameFromPath(t.project);
+                console.log(`renderStats: 任务 "${t.title}" (${t.start} 至 ${t.end}) 在范围内工时:`, hours);
                 return { ...t, hours, parentName };
             });
+            
+            console.log('renderStats: 可见任务数', visibleTasks.length, '统计任务数', taskStats.length);
 
             const totalTaskCount = taskStats.length;
             const totalWorkHours = taskStats.reduce((sum, t) => sum + t.hours, 0);
@@ -1539,11 +1859,15 @@
             // 计算时间段天数（今天=1，本周=7，本月=实际天数）
             const periodDays = Math.ceil((new Date(eVal + 'T00:00:00') - new Date(sVal + 'T00:00:00')) / (1000 * 60 * 60 * 24)) + 1;
             
-            // 根据每日设置计算时间段目标
+            // 计算时间段内的总休息时长
+            const totalBreakHours = calculateBreakHoursInPeriod(sVal, eVal);
+            console.log('renderStats: 总休息时长:', totalBreakHours.toFixed(1) + 'h');
+            
+            // 根据每日设置计算时间段目标（扣除休息时间）
             const dailyStandard = workSettings.standardHours; // 每日标准工时
-            const dailyOvertime = workSettings.overtimeHours; // 每日加班时长
-            const standardTarget = dailyStandard * periodDays;  // 标准目标
-            const overtimeTarget = dailyOvertime * periodDays;  // 加班目标
+            const dailyOvertime = workSettings.overtimeHours; // 每日额外工时
+            const standardTarget = Math.max(0, dailyStandard * periodDays - totalBreakHours);  // 标准目标（扣除休息）
+            const overtimeTarget = dailyOvertime * periodDays;  // 额外工时目标
             const totalTarget = standardTarget + overtimeTarget; // 总目标（圆环分母）
             
             // 更新顶部统计卡片
@@ -1552,10 +1876,13 @@
             document.getElementById('stat-total-days').innerText = totalTaskCount;
             document.getElementById('stat-task-count').innerText = totalWorkHours.toFixed(1) + 'h';
 
-            // 更新生活全景（简化版）- 标准/加班/其他
+            // 更新生活全景（简化版）- 标准/额外/其他
             const totalHoursInPeriod = periodDays * 24;
+            // 标准工时实际值（不超过目标）
             const standardActual = Math.min(totalWorkHours, standardTarget);
+            // 额外工时（超出标准目标的部分）
             const overtimeActual = Math.max(0, totalWorkHours - standardTarget);
+            // 其他时间
             const otherHours = Math.max(0, totalHoursInPeriod - totalWorkHours);
             
             // 更新生活全景进度条（3色：蓝=标准，橙=加班，灰=其他）
@@ -1569,15 +1896,16 @@
             // 更新中心显示
             document.getElementById('pie-center-hours').innerText = totalWorkHours.toFixed(1) + 'h';
             let detailText = '';
+            const breakInfo = totalBreakHours > 0 ? `（已扣除休息${totalBreakHours.toFixed(1)}h）` : '';
             if (totalWorkHours > standardTarget) {
                 const ot = totalWorkHours - standardTarget;
                 if (ot > overtimeTarget) {
-                    detailText = `标准${standardTarget}h + 加班${ot.toFixed(1)}h（超${(ot-overtimeTarget).toFixed(1)}h）`;
+                    detailText = `标准${standardTarget.toFixed(1)}h + 额外${ot.toFixed(1)}h（超${(ot-overtimeTarget).toFixed(1)}h）`;
                 } else {
-                    detailText = `标准${standardTarget}h + 加班${ot.toFixed(1)}h`;
+                    detailText = `标准${standardTarget.toFixed(1)}h + 额外${ot.toFixed(1)}h`;
                 }
             } else {
-                detailText = `目标 ${standardTarget}h（${periodDays}天×${dailyStandard}h）`;
+                detailText = `目标 ${standardTarget.toFixed(1)}h ${breakInfo}`;
             }
             document.getElementById('pie-center-detail').innerText = detailText;
             
@@ -1769,6 +2097,141 @@
             if (window.lucide) lucide.createIcons();
         }
 
+        // ==================== 工时配置函数 ====================
+        
+        // 验证工时输入（超过24小时变红）
+        function validateHoursInput(input) {
+            const val = parseFloat(input.value);
+            if (val > 24) {
+                input.classList.add('border-red-500', 'text-red-600');
+            } else {
+                input.classList.remove('border-red-500', 'text-red-600');
+            }
+        }
+        
+        // 将默认时间应用到周一~周日所有输入框
+        function applyDefaultToAllDays() {
+            const defaultHours = document.getElementById('input-default-hours').value;
+            document.querySelectorAll('.day-input').forEach(input => {
+                input.value = defaultHours;
+                validateHoursInput(input);
+            });
+        }
+        
+        // 加载任务时填充工时配置
+        function loadWorkTimeConfig(task) {
+            console.log('loadWorkTimeConfig:', task.weeklyDefaults, task.dailyPlans);
+            // 加载周一~周日配置
+            const defaults = task.weeklyDefaults || {mon: 8, tue: 8, wed: 8, thu: 8, fri: 8, sat: 8, sun: 8};
+            document.querySelectorAll('.day-input').forEach(input => {
+                const day = input.dataset.day;
+                const val = defaults[day];
+                input.value = val !== undefined ? val : 8;
+                console.log(`  ${day}: 加载值 =`, val, '显示值 =', input.value);
+                validateHoursInput(input);
+            });
+            
+            // 设置默认时间显示
+            const defaultInput = document.getElementById('input-default-hours');
+            if (defaultInput) {
+                const val = defaults.mon;
+                defaultInput.value = val !== undefined ? val : 8;
+            }
+            
+            // 加载特殊日期
+            const specialList = document.getElementById('special-dates-list');
+            if (specialList) {
+                specialList.innerHTML = '';
+                const dailyPlans = task.dailyPlans || {};
+                Object.entries(dailyPlans).forEach(([date, hours]) => {
+                    addSpecialDateRow(date, hours);
+                });
+            }
+        }
+        
+        // 重置工时配置（新建任务）
+        function resetWorkTimeConfig() {
+            const defaultInput = document.getElementById('input-default-hours');
+            if (defaultInput) defaultInput.value = 8;
+            document.querySelectorAll('.day-input').forEach(input => {
+                input.value = 8;
+                input.classList.remove('border-red-500', 'text-red-600');
+            });
+            const specialList = document.getElementById('special-dates-list');
+            if (specialList) specialList.innerHTML = '';
+            // 重置折叠状态为收起
+            const content = document.getElementById('worktime-config-content');
+            const text = document.getElementById('worktime-toggle-text');
+            const icon = document.getElementById('worktime-toggle-icon');
+            if (content) content.classList.add('hidden');
+            if (text) text.textContent = '展开';
+            if (icon) icon.setAttribute('data-lucide', 'chevron-down');
+        }
+        
+        // 保存工时配置到任务对象
+        function saveWorkTimeConfig() {
+            const weeklyDefaults = {};
+            document.querySelectorAll('.day-input').forEach(input => {
+                const val = parseFloat(input.value);
+                weeklyDefaults[input.dataset.day] = isNaN(val) ? 8 : val;
+            });
+            
+            const dailyPlans = {};
+            document.querySelectorAll('.special-date-item').forEach(item => {
+                const date = item.dataset.date;
+                const hoursInput = item.querySelector('.special-hours');
+                const val = hoursInput ? parseFloat(hoursInput.value) : 0;
+                const hours = isNaN(val) ? 0 : val;
+                if (date) dailyPlans[date] = hours;
+            });
+            
+            console.log('saveWorkTimeConfig:', { weeklyDefaults, dailyPlans });
+            return { weeklyDefaults, dailyPlans };
+        }
+        
+        // 添加特殊日期行
+        function addSpecialDateRow(dateStr = '', hours = 8) {
+            const list = document.getElementById('special-dates-list');
+            if (!list) return; // 防御性检查
+            const itemId = 'special-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5);
+            const row = document.createElement('div');
+            row.className = 'special-date-item flex items-center gap-2';
+            row.dataset.date = dateStr;
+            row.dataset.id = itemId;
+            row.innerHTML = `
+                <input type="date" class="special-date-input flex-1 bg-gray-50 border border-gray-200 rounded px-2 py-1 text-sm" value="${dateStr}" onchange="updateSpecialDate('${itemId}', this.value); autoSaveTask();">
+                <input type="number" class="special-hours w-16 bg-gray-50 border border-gray-200 rounded px-2 py-1 text-sm text-center" value="${hours}" min="0" max="24" oninput="validateHoursInput(this)" onchange="autoSaveTask();">
+                <span class="text-sm text-gray-500">小时</span>
+                <button type="button" onclick="removeSpecialDate('${itemId}'); autoSaveTask();" class="text-gray-400 hover:text-red-500 p-1">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            `;
+            list.appendChild(row);
+            if (window.lucide) lucide.createIcons();
+        }
+        
+        // 添加新的特殊日期
+        function addSpecialDate() {
+            const today = fmtDate(new Date());
+            addSpecialDateRow(today, 8);
+        }
+        
+        // 更新特殊日期值
+        function updateSpecialDate(itemId, newDate) {
+            const item = document.querySelector(`.special-date-item[data-id="${itemId}"]`);
+            if (item) {
+                item.dataset.date = newDate;
+            }
+        }
+        
+        // 删除特殊日期
+        function removeSpecialDate(itemId) {
+            const item = document.querySelector(`.special-date-item[data-id="${itemId}"]`);
+            if (item) {
+                item.remove();
+            }
+        }
+
         let currentDragState = null;
         function allowDrop(e) { e.preventDefault(); }
         function drop(e, s) { 
@@ -1818,7 +2281,7 @@
         function rsMove(e) { 
             if(!rState) return; 
             const el = document.elementFromPoint(e.type.includes('touch')?e.touches[0].clientX:e.clientX, e.type.includes('touch')?e.touches[0].clientY:e.clientY); 
-            const c = el?.closest('div[data-date]'); 
+            const c = el ? el.closest('div[data-date]') : null; 
             if(c) { 
                 const nd = c.getAttribute('data-date'); 
                 const t = tasks.find(x => x.id === rState.tid); 
@@ -1845,6 +2308,7 @@
             window.removeEventListener('touchmove', rsMove); 
             window.removeEventListener('touchend', rsUp); 
             saveTasks(); 
+            renderAllViews(); 
         }
 
         const TouchDragManager = {
@@ -1901,8 +2365,8 @@
                     this.clone.style.transform = `translate(${t.clientX-this.sx}px, ${t.clientY-this.sy}px) scale(1.02)`; 
                     if(currentView==='projects'){ 
                         document.querySelectorAll('.kanban-col').forEach(c => c.classList.remove('bg-gray-100')); 
-                        const el = document.elementFromPoint(t.clientX, t.clientY)?.closest('.kanban-col'); 
-                        if(el) el.classList.add('bg-gray-100'); 
+                        const el = document.elementFromPoint(t.clientX, t.clientY); const kanbanCol = el ? el.closest('.kanban-col') : null; 
+                        if(kanbanCol) kanbanCol.classList.add('bg-gray-100'); 
                     } 
                 } 
             },
@@ -1921,7 +2385,7 @@
                     const el = document.elementFromPoint(t.clientX, t.clientY); 
                     this.clone.style.display='block'; 
                     if(currentView==='projects'){ 
-                        const c = el?.closest('.kanban-col'); 
+                        const c = el ? el.closest('.kanban-col') : null; 
                         if(c) { 
                             const task = tasks.find(x => x.id == this.el.getAttribute('data-task-id')); 
                             if(task && task.status !== c.dataset.status) { 
@@ -1931,7 +2395,7 @@
                         } 
                         document.querySelectorAll('.kanban-col').forEach(c => c.classList.remove('bg-gray-100')); 
                     } else if(currentView==='calendar'){ 
-                        const c = el?.closest('div[data-date]'); 
+                        const c = el ? el.closest('div[data-date]') : null; 
                         if(c) { 
                             const task = tasks.find(x => x.id == this.el.getAttribute('data-task-id')); 
                             if(task) { 
@@ -1970,7 +2434,7 @@
                 s.appendChild(parentOption);
                 
                 // 子项目选项（使用不间断空格缩进，普通字重）
-                if(p.children?.length) {
+                if(p.children && p.children.length) {
                     p.children.forEach(c => {
                         const path = getProjectPath(p.name, c.name);
                         // 使用 \u00A0（不间断空格）实现缩进
@@ -2224,6 +2688,8 @@
                 document.getElementById('input-end-date').value = t.end;
                 document.getElementById('input-end-time').value = t.endTime || '20:00';
                 document.getElementsByName('status').forEach(r => r.checked = r.value === t.status);
+                // 加载工时配置
+                loadWorkTimeConfig(t);
             } else {
                 document.getElementById('edit-task-id').value = ''; 
                 document.getElementById('modal-title').innerText = "新建任务"; 
@@ -2236,6 +2702,8 @@
                 document.getElementById('input-end-date').value = d; 
                 document.getElementById('input-end-time').value = '20:00';
                 document.getElementsByName('status')[0].checked = true;
+                // 重置工时配置
+                resetWorkTimeConfig();
                 updateProjectColorIndicators();
                 updateSyncParentButton();
                 setTimeout(() => document.getElementById('input-title').focus(), 100);
@@ -2358,6 +2826,8 @@
             if(!id) {
                 if(!title) return; // 没有标题不创建
                 saveSnapshot('自动保存新建任务');
+                // 保存工时配置
+                const { weeklyDefaults, dailyPlans } = saveWorkTimeConfig();
                 const newTask = {
                     id: generateId('t'),
                     title: title,
@@ -2367,7 +2837,9 @@
                     startTime: document.getElementById('input-start-time').value || '09:30',
                     end: document.getElementById('input-end-date').value,
                     endTime: document.getElementById('input-end-time').value || '20:00',
-                    status: document.querySelector('input[name="status"]:checked')?.value || 'todo'
+                    status: (document.querySelector('input[name="status"]:checked') || {}).value || 'todo',
+                    weeklyDefaults,
+                    dailyPlans
                 };
                 tasks.unshift(newTask);
                 document.getElementById('edit-task-id').value = newTask.id; // 设置为编辑模式
@@ -2388,7 +2860,11 @@
                 t.end = document.getElementById('input-end-date').value;
                 t.endTime = document.getElementById('input-end-time').value || '20:00';
                 const statusEl = document.querySelector('input[name="status"]:checked');
-                if(statusEl) t.status = statusEl.value;
+                t.status = statusEl ? statusEl.value : 'todo';
+                // 保存工时配置
+                const { weeklyDefaults, dailyPlans } = saveWorkTimeConfig();
+                t.weeklyDefaults = weeklyDefaults;
+                t.dailyPlans = dailyPlans;
                 saveTasks();
                 renderAllViews();
             }
@@ -2429,6 +2905,10 @@
             const id = document.getElementById('edit-task-id').value, 
                   title = document.getElementById('input-title').value; 
             if(!title) return;
+            
+            // 保存工时配置
+            const { weeklyDefaults, dailyPlans } = saveWorkTimeConfig();
+            
             const data = { 
                 title, 
                 project: document.getElementById('input-project').value, 
@@ -2437,7 +2917,9 @@
                 startTime: document.getElementById('input-start-time').value || '09:30',
                 end: document.getElementById('input-end-date').value, 
                 endTime: document.getElementById('input-end-time').value || '20:00',
-                status: document.querySelector('input[name="status"]:checked').value
+                status: (document.querySelector('input[name="status"]:checked') || {value: 'todo'}).value,
+                weeklyDefaults,
+                dailyPlans
                 // 颜色不再存储在任务中，动态从项目获取
             };
             if(id) { 
@@ -2566,7 +3048,9 @@
                             end: item.end, 
                             endTime: item.endTime || '20:00',
                             project: pName || '待办中心', 
-                            status: ['todo', 'inprogress', 'done'].includes(item.status) ? item.status : 'todo'
+                            status: ['todo', 'inprogress', 'done'].includes(item.status) ? item.status : 'todo',
+                            weeklyDefaults: {mon: 8, tue: 8, wed: 8, thu: 8, fri: 8, sat: 8, sun: 8},
+                            dailyPlans: {}
                             // 颜色从项目动态获取，不存储在任务中
                         }); 
                         count++; 
@@ -2609,7 +3093,7 @@
                 }
                 
                 initUser(); 
-                setStatsPeriod('month'); 
+                setStatsPeriod('week'); 
                 renderAllViews();
                 console.log('应用初始化完成');
             } catch (e) {
