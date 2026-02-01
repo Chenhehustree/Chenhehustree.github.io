@@ -869,7 +869,8 @@
                     tasks = parsedTasks;
                     console.log('Loaded', tasks.length, 'tasks');
                     // 如果加载的任务是默认示例任务（通过id判断），清空它们
-                    if (tasks.some(t => t.id && t.id.startsWith('t_default_'))) {
+                    // 使用 String() 转换确保 id 是字符串
+                    if (tasks.some(t => t.id && String(t.id).startsWith('t_default_'))) {
                         console.log('检测到旧版示例任务，清空任务列表');
                         tasks = [];
                     }
